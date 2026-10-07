@@ -1,8 +1,81 @@
-{#
-  organizer/event_form.html
-  Create / edit event form. UC-006, UC-007, backlog #4, #5, #11, #12.
-
-  What goes here:
-  - Fields: title, description, location, category, start, end, price, capacity
-  - Cancel event button when editing
-#}
+{% extends "base.html" %}
+{% from "components/ui.html" import icon, badge, empty_state %}
+{% set editing = event is defined and event %}
+{% set values = form_values|default({}) %}
+{% set field_errors = errors|default({}) %}
+{% set current_cover = cover_url|default(event.cover_url|default('', true) if editing else '') %}
+{% block title %}{{ 'Edit event' if editing else 'Create an event' }}{% endblock %}
+{% block content %}
+<section class="container page-section event-editor" data-event-editor>
+  <a class="breadcrumb" href="/organizer/">{{ icon('arrow-left') }} Organizer studio</a>
+  <div class="page-heading"><div><p class="eyebrow">{{ 'Keep everyone in the loop' if editing else 'Make something happen' }}</p><h1 class="page-title">{{ 'Fine-tune the details.' if editing else 'Your idea. Their next plan.' }}</h1><p class="muted">{{ 'Update your event so everyone knows what to expect.' if editing else 'Bring your event to BroncosHub. Start with the essentials.' }}</p></div></div>
+  <div class="workspace-layout event-editor-layout">
+    <div class="workspace-main stack">
+      {% if field_errors %}<div class="alert alert-error" role="alert"><strong>A few details need another look.</strong><ul>{% for field, message in field_errors.items() %}<li><a href="#{{ field }}">{{ message }}</a></li>{% endfor %}</ul></div>{% endif %}
+      <form class="card stack event-editor-form" data-event-form data-dirty-on-load="{{ 'true' if field_errors else 'false' }}" method="post" enctype="multipart/form-data" action="{{ '/organizer/events/' ~ event.id ~ '/edit' if editing else '/organizer/events/new' }}">
+        {% if csrf_token is defined %}<input type="hidden" name="csrf_token" value="{{ csrf_token() if csrf_token is callable else csrf_token }}">{% endif %}
+        <div id="event-basics"><p class="eyebrow">01 / The basics</p><h2 class="section-title">What’s the occasion?</h2></div>
+        <div class="field"><label for="title">Event name <span aria-hidden="true">*</span></label><input id="title" name="title" required maxlength="120" placeholder="Give your event a name worth remembering" value="{{ values.get('title', event.title if editing else '') }}"{% if field_errors.get('title') %} aria-invalid="true" aria-describedby="title-error"{% endif %}>{% if field_errors.get('title') %}<p class="small" id="title-error">{{ field_errors.title }}</p>{% endif %}</div>
+        <div class="field"><label for="description">About your event <span aria-hidden="true">*</span></label><textarea id="description" name="description" rows="5" required maxlength="1200" placeholder="What’s happening? What should people know before they come?"{% if field_errors.get('description') %} aria-invalid="true" aria-describedby="description-error"{% endif %}>{{ values.get('description', event.description if editing else '') }}</textarea>{% if field_errors.get('description') %}<p class="small" id="description-error">{{ field_errors.description }}</p>{% endif %}</div>
+        <div class="field"><label for="category">Category <span aria-hidden="true">*</span></label><select id="category" name="category" required{% if field_errors.get('category') %} aria-invalid="true" aria-describedby="category-error"{% endif %}><option value="">Choose a category</option>{% for category in categories %}<option value="{{ category }}"{% if values.get('category', event.category if editing else '') == category %} selected{% endif %}>{{ category }}</option>{% endfor %}</select>{% if field_errors.get('category') %}<p class="small" id="category-error">{{ field_errors.category }}</p>{% endif %}</div>
+        <div class="divider"></div>
+        <div id="event-cover"><p class="eyebrow">02 / The cover</p><h2 class="section-title">Give them a first look.</h2><p class="muted cover-intro">Add a photo or poster for your event card and event page.</p></div>
+        <div class="cover-upload" data-cover-upload data-current-cover="{{ current_cover }}">
+          <div class="cover-upload-preview" data-cover-preview{% if not current_cover %} hidden{% endif %}><img data-cover-image{% if current_cover %} src="{{ current_cover }}"{% endif %} alt="Selected event cover" width="720" height="450"></div>
+          <div class="cover-upload-empty" data-cover-empty{% if current_cover %} hidden{% endif %}>{{ icon('image') }}<strong>Make your event stand out.</strong><p class="muted">Choose an image, or drag and drop it here.</p></div>
+          <div class="cover-upload-controls">
+            <div class="field"><label for="cover_image">Cover image <span class="muted">(optional)</span></label><input id="cover_image" name="cover_image" type="file" accept="image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp" aria-describedby="cover-help cover_image-error"{% if field_errors.get('cover_image') %} aria-invalid="true"{% endif %}><p id="cover-help" class="small muted">JPG, PNG or WebP, up to 5 MB. A wide image works best; the preview shows the crop.</p></div>
+            <div class="cover-upload-status"><p class="small" data-cover-name role="status" aria-live="polite">{{ cover_name|default('') if current_cover else 'No image selected. We’ll use a campus cover.' }}</p><button class="button button-ghost button-small" type="button" data-cover-remove hidden>{{ icon('x') }} <span data-cover-remove-label>Remove image</span></button></div>
+            <p id="cover_image-error" class="cover-error" role="alert"{% if not field_errors.get('cover_image') %} hidden{% endif %}>{{ field_errors.get('cover_image', '') }}</p>
+            <input type="hidden" name="cover_token" value="{{ cover_token|default('') }}">
+            <input type="hidden" name="remove_cover" value="{{ '1' if values.get('remove_cover') == '1' else '0' }}" data-remove-cover-value{% if values.get('remove_cover') != '1' %} disabled{% endif %}>
+            {% if current_cover %}<noscript><label class="checkbox-line"><input type="checkbox" name="remove_cover" value="1"> Remove this cover and use the default</label></noscript>{% endif %}
+          </div>
+        </div>
+        <div class="divider"></div>
+        <div id="event-schedule"><p class="eyebrow">03 / Time & place</p><h2 class="section-title">Make it easy to show up.</h2></div>
+        <div class="field"><label for="location">Location <span aria-hidden="true">*</span></label><input id="location" name="location" required maxlength="120" placeholder="Venue, building, or meeting point" value="{{ values.get('location', event.location if editing else '') }}"{% if field_errors.get('location') %} aria-invalid="true" aria-describedby="location-error"{% endif %}>{% if field_errors.get('location') %}<p class="small" id="location-error">{{ field_errors.location }}</p>{% endif %}</div>
+        <div class="form-grid">
+          <div class="field"><label for="start_time">Starts <span aria-hidden="true">*</span></label><input id="start_time" type="datetime-local" name="start_time" required value="{{ values.get('start_time', event.start_value if editing else '') }}"{% if field_errors.get('start_time') %} aria-invalid="true" aria-describedby="start_time-error"{% endif %}>{% if field_errors.get('start_time') %}<p class="small" id="start_time-error">{{ field_errors.start_time }}</p>{% endif %}</div>
+          <div class="field"><label for="end_time">Ends <span aria-hidden="true">*</span></label><input id="end_time" type="datetime-local" name="end_time" required value="{{ values.get('end_time', event.end_value if editing else '') }}"{% if field_errors.get('end_time') %} aria-invalid="true" aria-describedby="end_time-error"{% endif %}>{% if field_errors.get('end_time') %}<p class="small" id="end_time-error">{{ field_errors.end_time }}</p>{% endif %}</div>
+        </div>
+        <p class="small muted">All event times are in Pacific Time.</p>
+        <div class="divider"></div>
+        <div id="event-registration"><p class="eyebrow">04 / Registration</p><h2 class="section-title">Who’s coming along?</h2></div>
+        <div class="form-grid">
+          {% set price_is_locked = preview_mode and editing and (event.registrations_count > 0 or event.price_locked|default(false)) %}
+          <div class="field"><label for="price">Price per person ($) <span aria-hidden="true">*</span></label><input id="price" name="price" type="number" min="0" max="9999" step="0.01" required value="{{ event.price_cents / 100 if price_is_locked else values.get('price', event.price_cents / 100 if editing else '0') }}" aria-describedby="price-help{% if field_errors.get('price') %} price-error{% endif %}"{% if price_is_locked %} readonly{% endif %}{% if field_errors.get('price') %} aria-invalid="true"{% endif %}><p id="price-help" class="small muted">{{ 'Price is fixed after the first registration in this preview.' if price_is_locked else 'Set to 0 for a free event.' }}</p>{% if field_errors.get('price') %}<p class="small" id="price-error">{{ field_errors.price }}</p>{% endif %}</div>
+          <div class="field"><label for="capacity">Event capacity <span aria-hidden="true">*</span></label><input id="capacity" name="capacity" type="number" min="1" max="10000" step="1" required value="{{ values.get('capacity', event.capacity if editing else '50') }}" aria-describedby="capacity-help{% if field_errors.get('capacity') %} capacity-error{% endif %}"{% if field_errors.get('capacity') %} aria-invalid="true"{% endif %}><p id="capacity-help" class="small muted">The maximum number of registrations.</p>{% if field_errors.get('capacity') %}<p class="small" id="capacity-error">{{ field_errors.capacity }}</p>{% endif %}</div>
+        </div>
+        <p class="editor-save-state" data-form-state data-clean-label="{{ 'No unsaved changes' if editing else 'Ready when you are' }}" role="status" aria-live="polite">Changes are saved when you {{ 'save this form' if editing else 'publish' }}.</p>
+        <div class="form-actions"><a class="button button-secondary" href="/organizer/">Go back</a><button class="button button-primary" type="submit">{{ 'Save changes' if editing else 'Publish event' }} {{ icon('arrow-right') }}</button></div>
+      </form>
+      {% if editing and event.status != 'cancelled' %}
+      <form id="cancel-event-{{ event.id }}" action="/organizer/events/{{ event.id }}/cancel" method="post" class="surface stack-sm">
+        {% if csrf_token is defined %}<input type="hidden" name="csrf_token" value="{{ csrf_token() if csrf_token is callable else csrf_token }}">{% endif %}
+        <h2 class="section-title">Plans changed?</h2><p class="small muted">Cancelling closes registration and marks the event unavailable.</p>
+        {% if preview_mode and event.price_cents > 0 %}<p class="small">Refund handling still needs to be agreed with the team. Cancelling this preview does not process refunds.</p>{% endif %}
+        <div><button type="button" class="button button-ghost button-small" data-confirm-form="cancel-event-{{ event.id }}" data-confirm-title="Cancel this event?" data-confirm-message="This event will be marked cancelled and will no longer accept registrations.">{{ icon('x') }} Cancel event</button></div>
+      </form>
+      {% endif %}
+    </div>
+    <aside class="workspace-aside event-draft-sidebar" aria-label="Event preview">
+      <div class="event-draft-sticky stack">
+        <div class="section-heading"><p class="eyebrow">Your event, taking shape</p><span class="draft-label">Preview</span></div>
+        <article class="draft-event-card" data-draft-card>
+          <div class="draft-event-art"><img data-preview-art data-original-category="{{ event.category if editing else '' }}" data-original-art="{{ event.art if editing else 'campus.svg' }}" src="{{ current_cover or url_for('static', filename='images/' ~ (draft_art|default(event.art if editing else 'campus.svg'))) }}" alt="" width="720" height="480"><span class="draft-price" data-preview-field="price">{{ event.price_label if editing else 'Free' }}</span></div>
+          <div class="draft-event-body stack-sm">
+            <p class="eyebrow" data-preview-field="category">{{ values.get('category', event.category if editing else '') or 'Your category' }}</p>
+            <h2 class="section-title" data-preview-field="title">{{ values.get('title', event.title if editing else '') or 'Something good is coming.' }}</h2>
+            <p>{{ icon('calendar') }} <span data-preview-field="date">{{ (values.get('start_time', '')|replace('T', ' · ')) if values.get('start_time') else (event.date_label ~ ' · ' ~ event.time_label if editing else 'Date & time to come') }}</span></p>
+            <p>{{ icon('pin') }} <span data-preview-field="location">{{ values.get('location', event.location if editing else '') or 'Your spot on campus' }}</span></p>
+          </div>
+        </article>
+        <nav class="editor-section-links" aria-label="Event form sections"><a href="#event-basics"><span>01</span> The basics</a><a href="#event-cover"><span>02</span> Cover image</a><a href="#event-schedule"><span>03</span> Time & place</a><a href="#event-registration"><span>04</span> Registration</a></nav>
+        <p class="small muted">Fields marked * are required. Your event goes live when you publish.</p>
+        {% if preview_mode %}<p class="small muted">Demo mode: changes stay in this preview session.</p>{% endif %}
+      </div>
+    </aside>
+  </div>
+</section>
+{% endblock %}

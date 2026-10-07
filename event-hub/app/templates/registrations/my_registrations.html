@@ -1,7 +1,17 @@
-{#
-  registrations/my_registrations.html
-  My Registrations. UC-005, backlog #16.
-
-  What goes here:
-  - List of my events with status; message + link when empty
-#}
+{% extends 'base.html' %}
+{% from 'components/ui.html' import icon, event_card, badge, empty_state %}
+{% block title %}My events{% endblock %}
+{% block content %}
+<section class="container page-section">
+  <div class="page-heading reveal"><div><p class="eyebrow">PLANS LOOK GOOD ON YOU</p><h1 class="page-title">Your campus calendar, sorted.</h1><p class="muted">Your registrations, tickets, and things to look forward to.</p></div><a class="button button-secondary" href="/events">Find more plans {{ icon('plus') }}</a></div>
+  <div class="section-heading"><h2 class="section-title">My events <span class="count-label">{{ registrations|length }}</span></h2><span class="small muted">All your registrations in one place</span></div>
+  {% if registrations %}<div class="registration-list reveal">
+  {% for registration in registrations %}{% set event = registration.event %}
+    <article class="registration-row surface">
+      <a class="registration-row-art" href="/my-registrations/{{ registration.id }}" aria-label="View registration for {{ event.title }}"><img src="{{ event.cover_url|default('', true) or url_for('static', filename='images/' ~ event.art) }}" alt="" width="260" height="200"></a>
+      <div class="registration-row-main stack-sm"><div class="inline"><span class="eyebrow">{{ event.category }}</span>{% if event.status == 'cancelled' %}<span class="badge badge-red">Event cancelled</span>{% elif registration.status == 'cancelled' %}<span class="badge">Registration cancelled</span>{% elif registration.status == 'confirmed' %}<span class="badge badge-green">Confirmed</span>{% elif registration.payment_status in ['failed', 'declined'] or registration.status == 'failed' %}<span class="badge badge-red">Payment unsuccessful</span>{% else %}<span class="badge badge-amber">Awaiting confirmation</span>{% endif %}</div><h3><a href="/my-registrations/{{ registration.id }}">{{ event.title }}</a></h3><p class="small muted inline">{{ icon('calendar') }} {{ event.date_label }} · {{ event.time_label }}</p><p class="small muted inline">{{ icon('pin') }} {{ event.location }}</p></div>
+      <div class="registration-row-action"><span class="small muted">{{ event.price_label }}</span><a class="button button-secondary button-small" href="/my-registrations/{{ registration.id }}">{{ 'View ticket' if registration.ticket_valid and event.price_cents > 0 else 'View details' }} {{ icon('arrow-up-right') }}</a></div>
+    </article>
+  {% endfor %}</div>{% else %}<div class="empty-state surface reveal"><span class="empty-state-icon">{{ icon('ticket') }}</span><h2 class="section-title">Your next event starts here.</h2><p class="muted">Find something you like, register, and we'll keep the details right here.</p><a class="button button-primary" href="/events">Explore campus events {{ icon('arrow-up-right') }}</a></div>{% endif %}
+</section>
+{% endblock %}

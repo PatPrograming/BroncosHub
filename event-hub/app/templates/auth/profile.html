@@ -1,7 +1,62 @@
-{#
-  auth/profile.html
-  Profile page. Backlog #22.
+{% extends "base.html" %}
+{% from "components/ui.html" import icon %}
+{% set values = form_values|default({}) %}
+{% set field_errors = errors|default({}) %}
+{% set overview = profile_overview|default({}) %}
+{% set next_registration = overview.get('next_registration') %}
+{% set year_labels = {'first_year':'First year','second_year':'Second year','third_year':'Third year','fourth_year':'Fourth year','graduate':'Graduate student'} %}
+{% set name_parts = user.name.split() %}
+{% block title %}Your profile{% endblock %}
+{% block page_assets %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/profile.css') }}">
+<script src="{{ url_for('static', filename='js/profile.js') }}" defer></script>
+{% endblock %}
+{% block content %}
+<section class="container profile-page">
+  <header class="profile-heading"><div><p class="eyebrow">Made for Broncos</p><h1>Your profile.</h1></div><p>Your details. Your campus. Your next plan.</p></header>
 
-  What goes here:
-  - Show name and email; form to set year level
-#}
+  <section class="profile-identity" aria-label="Your saved profile">
+    <div class="profile-identity-person">
+      <span class="profile-monogram" aria-hidden="true">{{ (name_parts[0][0] ~ (name_parts[-1][0] if name_parts|length > 1 else ''))|upper if name_parts else 'B' }}</span>
+      <div class="profile-identity-copy"><h2>{{ user.name }}</h2><p>Santa Clara University</p><div class="profile-tags"><span>{{ icon('horseshoe') }} {{ user.role|title }}</span>{% if year_labels.get(user.year_level) %}<span>{{ year_labels[user.year_level] }}</span>{% endif %}</div></div>
+    </div>
+    <div class="profile-identity-mark" aria-hidden="true">{{ icon('horseshoe') }}</div>
+    {% if profile_overview is defined %}<div class="profile-plans-count"><span class="profile-count-icon" aria-hidden="true">{{ icon('ticket') }}</span><div><strong>{{ overview.upcoming_count }}</strong><span>upcoming {{ 'plan' if overview.upcoming_count == 1 else 'plans' }}</span></div></div>{% endif %}
+  </section>
+
+  <div class="profile-content-grid">
+    <section class="profile-details surface" aria-labelledby="profile-details-title">
+      <div class="profile-panel-heading"><div><h2 id="profile-details-title">The essentials</h2><p>Help your campus community know you.</p></div><span class="profile-panel-icon" aria-hidden="true">{{ icon('edit') }}</span></div>
+      {% if field_errors %}<div class="alert alert-error" role="alert" data-profile-errors><strong>Please check these details.</strong><ul>{% for field,message in field_errors.items() %}<li><a href="#{{ field }}">{{ message }}</a></li>{% endfor %}</ul></div>{% endif %}
+      <form class="profile-details-form" method="post" action="/profile" data-profile-form data-saved-name="{{ user.name }}" data-saved-year="{{ user.year_level|default('unknown', true) }}" data-has-errors="{{ 'true' if field_errors else 'false' }}">
+        {% if csrf_token is defined %}<input type="hidden" name="csrf_token" value="{{ csrf_token() if csrf_token is callable else csrf_token }}">{% endif %}
+        <div class="profile-edit-fields">
+          <div class="field"><label for="name">Your name</label><input id="name" name="name" autocomplete="name" required maxlength="80" value="{{ values.get('name', user.name) }}"{% if field_errors.get('name') %} aria-invalid="true" aria-describedby="name-error"{% endif %}>{% if field_errors.get('name') %}<p id="name-error" class="profile-field-error" data-profile-field-error>{{ field_errors.name }}</p>{% endif %}</div>
+          <div class="field"><label for="year_level">Year level <span class="muted">(optional)</span></label><select id="year_level" name="year_level" aria-describedby="year-help{% if field_errors.get('year_level') %} year-error{% endif %}"{% if field_errors.get('year_level') %} aria-invalid="true"{% endif %}><option value="unknown"{% if values.get('year_level', user.year_level) in ['unknown', '', none] %} selected{% endif %}>Prefer not to say</option>{% for value,label in year_labels.items() %}<option value="{{ value }}"{% if values.get('year_level', user.year_level) == value %} selected{% endif %}>{{ label }}</option>{% endfor %}</select>{% if field_errors.get('year_level') %}<p id="year-error" class="profile-field-error" data-profile-field-error>{{ field_errors.year_level }}</p>{% endif %}</div>
+        </div>
+        <p id="year-help" class="profile-field-note">Your year is used in organizers’ attendance summaries. Choose “Prefer not to say” to keep it unspecified.</p>
+        <div class="profile-email-row"><span class="profile-email-icon" aria-hidden="true">{{ icon('mail') }}</span><div><span class="profile-email-label">SCU sign-in email</span><p>{{ user.email }}</p></div></div>
+        <div class="profile-save-row"><p data-profile-save-state role="status" aria-live="polite">Save your updates when you’re ready.</p><div class="profile-save-actions"><button type="button" class="button button-ghost" data-profile-discard hidden>Discard</button><button type="submit" class="button button-primary" data-profile-save>Save changes {{ icon('check') }}</button></div></div>
+      </form>
+      {% if preview_mode %}<p class="profile-demo-note">{{ icon('info') }} Demo profile · Updates stay in this preview session.</p>{% endif %}
+    </section>
+
+    <aside class="profile-next-panel surface" aria-labelledby="profile-next-title">
+      <div class="profile-panel-heading"><div><p class="eyebrow">Something to look forward to</p><h2 id="profile-next-title">Next on your calendar</h2></div></div>
+      {% if next_registration %}{% set next_event = next_registration.event %}
+      <a class="profile-next-event" href="/my-registrations/{{ next_registration.id }}" aria-label="View ticket for {{ next_event.title }}">
+        <div class="profile-next-art"><img src="{{ next_event.cover_url|default('', true) or url_for('static', filename='images/' ~ next_event.art) }}" alt="" width="720" height="450"><span class="profile-next-date"><strong>{{ next_event.day }}</strong>{{ next_event.month }}</span></div>
+        <div class="profile-next-copy"><span class="profile-event-category">{{ next_event.category }}</span><h3>{{ next_event.title }}</h3><p>{{ icon('clock') }} {{ next_event.time_label }}</p><p>{{ icon('pin') }} {{ next_event.location }}</p><span class="profile-ticket-link">View ticket {{ icon('arrow-up-right') }}</span></div>
+      </a>
+      {% else %}<div class="profile-no-plans"><span aria-hidden="true">{{ icon('calendar') }}</span><h3>A little room for something good.</h3><p>Your next confirmed event will appear here.</p><a class="button button-secondary" href="/events">Find your next plan {{ icon('arrow-right') }}</a></div>{% endif %}
+      {% if overview.get('pending_count', 0) %}<a class="profile-pending" href="/my-registrations">{{ icon('info') }}<span>{{ overview.pending_count }} {{ 'registration needs' if overview.pending_count == 1 else 'registrations need' }} payment</span>{{ icon('arrow-right') }}</a>{% endif %}
+    </aside>
+  </div>
+
+  <nav class="profile-shortcuts" aria-label="Account shortcuts">
+    <a href="/my-registrations"><span class="profile-shortcut-icon">{{ icon('ticket') }}</span><span><strong>My events</strong><span>Your tickets and registrations</span></span>{{ icon('arrow-up-right') }}</a>
+    {% if user.role == 'organizer' %}<a href="/organizer/"><span class="profile-shortcut-icon">{{ icon('grid') }}</span><span><strong>Organizer studio</strong><span>Make your next event happen</span></span>{{ icon('arrow-up-right') }}</a>{% elif user.role == 'admin' %}<a href="/admin/reports"><span class="profile-shortcut-icon">{{ icon('grid') }}</span><span><strong>Campus reports</strong><span>Review reported events</span></span>{{ icon('arrow-up-right') }}</a>{% else %}<a href="/events"><span class="profile-shortcut-icon">{{ icon('search') }}</span><span><strong>Explore campus</strong><span>Find your next good plan</span></span>{{ icon('arrow-up-right') }}</a>{% endif %}
+    <form method="post" action="/logout">{% if csrf_token is defined %}<input type="hidden" name="csrf_token" value="{{ csrf_token() if csrf_token is callable else csrf_token }}">{% endif %}<button type="submit" class="button button-ghost">{{ icon('logout') }} Sign out</button></form>
+  </nav>
+</section>
+{% endblock %}

@@ -1,7 +1,24 @@
-{#
-  organizer/stats.html
-  Event statistics. UC-008, backlog #19-#21.
-
-  What goes here:
-  - Active registrations, breakdown by year level, confirmed revenue
-#}
+{% extends "base.html" %}
+{% from "components/ui.html" import icon, badge, empty_state %}
+{% block title %}Event statistics{% endblock %}
+{% block content %}
+<section class="container page-section event-statistics">
+  <a class="breadcrumb" href="/organizer/">{{ icon('arrow-left') }} Organizer studio</a>
+  <div class="page-heading"><div><p class="eyebrow">Event statistics</p><h1 class="page-title">{{ event.title }}</h1><div class="inline event-statistics-context"><span class="muted">{{ event.date_label }} · {{ event.time_label }}</span>{{ badge(event.status) }}</div></div><a class="button button-secondary" href="/events/{{ event.id }}">View event {{ icon('arrow-up-right') }}</a></div>
+  <div class="stat-grid">
+    <div class="stat-card"><span class="muted small">Active registrations</span><strong>{{ stats.registrations }}</strong><span class="small">Expected attendance</span></div>
+    <div class="stat-card"><span class="muted small">Confirmed revenue</span><strong>{{ stats.revenue_label }}</strong><span class="small">Successful payments only</span></div>
+    <div class="stat-card"><span class="muted small">Event capacity</span><strong>{{ event.capacity }}</strong><span class="small">{{ 'Registration closed' if event.status == 'cancelled' else event.spots_left|string ~ ' spots remaining' }}</span></div>
+  </div>
+  <div class="workspace-layout">
+    <div class="workspace-main card stack">
+      <div class="section-heading"><div><p class="eyebrow">Your campus community</p><h2 class="section-title">Registrations by year.</h2></div>{{ icon('users') }}</div>
+      {% if stats.registrations %}
+      {% for year in stats.year_breakdown %}<div class="year-row stack-sm"><div class="section-heading"><span>{{ year.label }}</span><span class="year-value"><strong>{{ year.count }}</strong><span class="muted"> · {{ year.percent|round|int }}%</span></span></div><div class="progress-track" role="img" aria-label="{{ year.label }}: {{ year.count }} registrations, {{ year.percent|round|int }} percent"><div class="progress-fill" style="width: {{ [0, [year.percent, 100]|min]|max }}%"></div></div></div>{% endfor %}
+      {% else %}{{ empty_state('A fresh start.', 'Your registration breakdown will appear when people start signing up.') }}{% endif %}
+      <p class="small muted">Year level is optional. People who haven’t shared it are counted as Unknown.</p>
+    </div>
+    <aside class="workspace-aside surface stack"><p class="eyebrow">Reading the numbers</p><h2 class="section-title">What these numbers mean.</h2><p class="small muted">Registration counts tell you how many people plan to come. They are not an attendance or check-in count.</p><p class="small muted">Revenue includes confirmed payments only. Pending and failed payments are excluded.</p>{% if event.status != 'cancelled' %}<a class="link" href="/organizer/events/{{ event.id }}/edit">Edit event details {{ icon('arrow-right') }}</a>{% endif %}</aside>
+  </div>
+</section>
+{% endblock %}

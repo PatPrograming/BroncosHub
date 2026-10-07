@@ -216,3 +216,8 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Local UI review captures; not needed to run the app
+event-hub/docs/review-v2/
+event-hub/docs/screenshots/
+.DS_Store

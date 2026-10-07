@@ -1,7 +1,30 @@
-{#
-  index.html
-  Home page '/'.
+{% extends 'base.html' %}
+{% from 'components/ui.html' import icon, event_card, badge, empty_state %}
+{% block title %}Your campus, your plans{% endblock %}
+{% block content %}
+{% set can_organize = user and user.role == 'organizer' %}
+{% set organize_href = '/organizer/events/new' if can_organize else '/preview/role/organizer?next=/organizer/events/new' %}
 
-  What goes here:
-  - Short intro and a 'Browse events' button
-#}
+<section class="container home-hero page-section">
+  <div class="home-hero-copy reveal">
+    <p class="eyebrow hero-kicker"><span class="status-dot" aria-hidden="true"></span> A little more campus. A lot more connection.</p>
+    <h1 class="display-title">Good plans.<br><span>Great company.</span></h1>
+    <p class="hero-description muted">From your next club night to a much-needed study break. Find your people, right here at Santa Clara.</p>
+    <div class="hero-actions inline"><a class="button button-primary" href="/events">Find your next plan {{ icon('arrow-up-right') }}</a>{% if can_organize or preview_mode %}<a class="button button-ghost" href="{{ organize_href }}">{{ "Bring people together" if can_organize else "Try organizer view" }} {{ icon('arrow-right') }}</a>{% endif %}</div>
+    <p class="hero-mini-note">Made for Broncos. Happening on campus.</p>
+  </div>
+  {% if events %}{% set featured = featured_event|default(events[0], true) %}
+  <a href="/events/{{ featured.id }}" class="hero-feature reveal" aria-label="Explore {{ featured.title }}">
+    <img class="hero-feature-art" src="{{ featured.cover_url|default('', true) or url_for('static', filename='images/' ~ featured.art) }}" alt="" width="640" height="720">
+    <div class="hero-feature-overlay"></div><span class="hero-feature-tag">THE CAMPUS PICK</span>
+    <span class="hero-feature-date"><strong>{{ featured.day }}</strong><span>{{ featured.month }}</span></span>
+    <div class="hero-feature-copy"><span class="small">{{ featured.category }} · {{ featured.date_label }}</span><h2>{{ featured.title }}</h2><div class="inline"><span>{{ icon('pin') }} {{ featured.location }}</span><span class="hero-feature-arrow" aria-hidden="true">{{ icon('arrow-up-right') }}</span></div></div>
+  </a>{% endif %}
+</section>
+<section class="container page-section reveal" aria-labelledby="home-events-heading">
+  <div class="section-heading"><div><p class="eyebrow">LESS SCROLLING. MORE SHOWING UP.</p><h2 id="home-events-heading" class="section-title">See you around campus.</h2></div><a class="link" href="/events">Explore all events {{ icon('arrow-right') }}</a></div>
+  <div class="category-links" aria-label="Explore by category"><a class="category-link is-active" href="/events">A little of everything {{ icon('grid') }}</a>{% for category in categories[:4] %}<a class="category-link" href="/events?category={{ category|urlencode }}">{{ category }} {{ icon('arrow-up-right') }}</a>{% endfor %}</div>
+  {% if events %}<div class="event-grid">{% for event in events[:3] %}{{ event_card(event) }}{% endfor %}</div>{% else %}<div class="empty-state surface"><h3>Something good is on the way.</h3><p class="muted">New campus events will appear here as organizers publish them.</p>{% if can_organize or preview_mode %}<a class="button button-secondary" href="{{ organize_href }}">{{ "Create an event" if can_organize else "Try organizer view" }} {{ icon('plus') }}</a>{% endif %}</div>{% endif %}
+</section>
+<section class="container page-section reveal"><div class="community-banner"><div><p class="eyebrow">YOUR IDEA. OUR CAMPUS.</p><h2 class="section-title">Make a good thing happen.</h2><p class="muted">Hosting a club meetup, workshop, or campus hangout? Give it a place on BroncosHub.</p></div>{% if can_organize or preview_mode %}<a class="button button-primary" href="{{ organize_href }}">{{ "Create an event" if can_organize else "Try organizer view" }} {{ icon('plus') }}</a>{% else %}<p class="small muted">Ask your club organizer to share your next event.</p>{% endif %}</div></section>
+{% endblock %}

@@ -1,8 +1,41 @@
-{#
-  registrations/detail.html
-  One registration. UC-004, UC-005, backlog #17, #18.
-
-  What goes here:
-  - Status, payment, ticket code (or 'not valid')
-  - Cancel button for free, confirmed registrations
-#}
+{% extends 'base.html' %}
+{% from 'components/ui.html' import icon, event_card, badge, empty_state %}
+{% set event = registration.event %}
+{% set inactive = event.status == 'cancelled' or registration.status == 'cancelled' %}
+{% block title %}{{ event.title }} registration{% endblock %}
+{% block content %}
+<section class="container page-section">
+  <a class="breadcrumb" href="/my-registrations">{{ icon('arrow-left') }} Back to my events</a>
+  <div class="page-heading"><div><p class="eyebrow">YOUR PLAN, ALL IN ONE PLACE</p><h1 class="page-title">{% if inactive %}A change of plans.{% elif registration.status == 'confirmed' %}You're on the list.{% else %}Almost a plan.{% endif %}</h1><p class="muted">{% if inactive %}This registration is no longer active.{% elif registration.status == 'confirmed' %}Keep the details handy. We'll see you there.{% else %}Your registration is waiting for confirmation.{% endif %}</p></div></div>
+  <div class="registration-layout">
+    <div class="ticket-card ticket-pass{% if inactive %} ticket-pass--inactive{% elif registration.status == 'confirmed' %} ticket-pass--confirmed{% else %} ticket-pass--pending{% endif %}">
+      <div class="ticket-header"><span class="eyebrow">BRONCOSHUB / {{ 'EVENT TICKET' if event.price_cents > 0 else 'REGISTRATION' }}</span>{% if inactive %}<span class="badge badge-red">Cancelled</span>{% elif registration.status == 'confirmed' %}<span class="badge badge-green">Confirmed</span>{% elif registration.payment_status in ['failed', 'declined'] %}<span class="badge badge-red">Payment unsuccessful</span>{% else %}<span class="badge badge-amber">Pending</span>{% endif %}</div>
+      <div class="ticket-body stack">
+        <div class="ticket-pass-title">
+          <div><h2 class="section-title">{{ event.title }}</h2><p class="muted small">Hosted by {{ event.organizer }}</p></div>
+          {% if registration.status == 'confirmed' and not inactive %}<span class="ticket-check" aria-hidden="true">{{ icon('check') }}</span>{% endif %}
+        </div>
+        <div class="event-facts ticket-pass-facts">
+          <div class="event-fact">{{ icon('calendar') }}<div><strong>{{ event.date_label }}</strong><span class="small muted">{{ event.time_label }}</span></div></div>
+          <div class="event-fact">{{ icon('pin') }}<div><strong>{{ event.location }}</strong><span class="small muted">Santa Clara University</span></div></div>
+        </div>
+        {% if registration.ticket_valid and not inactive and event.price_cents > 0 %}
+        <div class="ticket-code"><span class="small muted">Your ticket reference</span><strong>{{ registration.ticket_code }}</strong><span class="small muted">{% if preview_mode %}Sample ticket for the UI preview. Not valid for real admission.{% else %}Keep this reference with your event details.{% endif %}</span></div>
+        {% elif event.price_cents > 0 %}<div class="alert alert-warning">{% if inactive %}This ticket is no longer valid.{% else %}A valid ticket will appear after payment is confirmed.{% endif %}</div>{% endif %}
+      </div>
+      <img class="summary-art ticket-pass-art" src="{{ event.cover_url|default('', true) or url_for('static', filename='images/' ~ event.art) }}" alt="" width="800" height="450">
+      <div class="ticket-attendee">
+        <div class="order-row"><span class="muted">Registered for</span><strong>{{ user.name }}</strong></div>
+        <div class="order-row"><span class="muted">Admission</span><strong>{{ event.price_label }}</strong></div>
+      </div>
+    </div>
+    <aside class="card stack reveal"><h2 class="section-title">Plan details</h2>
+      {% if event.status == 'cancelled' %}<div class="alert alert-warning">The organizer cancelled this event. It no longer accepts registrations or tickets.</div>{% elif registration.status == 'cancelled' %}<div class="alert alert-warning">You've cancelled this registration.</div>{% elif registration.status == 'confirmed' %}<div class="alert alert-success">{{ icon('check') }} Registration confirmed.</div>{% elif registration.payment_status in ['failed', 'declined'] %}<div class="alert alert-error">The payment wasn't successful. Your registration is not confirmed.</div>{% else %}<div class="alert alert-warning">Payment confirmation is pending. Your registration is not confirmed yet.</div>{% endif %}
+      <a class="button button-secondary" href="/events/{{ event.id }}">View event page {{ icon('arrow-up-right') }}</a>
+      {% if not inactive and event.price_cents > 0 and registration.status != 'confirmed' %}<a class="button button-primary" href="/registrations/{{ registration.id }}/checkout">{% if preview_mode %}Try demo checkout{% else %}Continue to checkout{% endif %} {{ icon('arrow-right') }}</a>{% endif %}
+      {% if not inactive and registration.status == 'confirmed' and event.price_cents == 0 %}<div class="divider"></div><div><h3>Can't make it?</h3><p class="small muted">Cancel your registration so the organizer has an accurate head count.</p></div><form id="cancel-registration-{{ registration.id }}" action="/my-registrations/{{ registration.id }}/cancel" method="post">{% if csrf_token is defined %}<input type="hidden" name="csrf_token" value="{{ csrf_token() if csrf_token is callable else csrf_token }}">{% endif %}<button class="button button-ghost" type="button" data-confirm-form="cancel-registration-{{ registration.id }}" data-confirm-title="Cancel your registration?" data-confirm-message="You will be removed from this event's registration list. Your other plans stay the same." data-confirm-label="Cancel registration" data-confirm-cancel-label="Keep registration">Cancel registration {{ icon('x') }}</button></form>{% elif not inactive and event.price_cents > 0 %}<p class="small muted">Cancellation and refunds for paid tickets aren't available yet.</p>{% endif %}
+      {% if inactive %}<a class="button button-primary" href="/events">Find your next plan {{ icon('arrow-right') }}</a>{% endif %}
+    </aside>
+  </div>
+</section>
+{% endblock %}

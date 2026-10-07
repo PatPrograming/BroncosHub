@@ -1,0 +1,139 @@
+/* Ticket essentials stay ahead of decorative artwork on every screen. */
+.ticket-pass .ticket-header {
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  flex-wrap:wrap;
+  gap:12px;
+  padding:22px 30px;
+}
+
+.ticket-pass .ticket-header .eyebrow {
+  margin:0;
+}
+
+.ticket-pass .ticket-body {
+  gap:24px;
+  border-top:0;
+}
+
+.ticket-pass-title {
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:20px;
+}
+
+.ticket-pass-title .section-title {
+  font-size:clamp(1.75rem,2.4vw,2.25rem);
+  line-height:1.15;
+  margin-bottom:10px;
+}
+
+.ticket-check {
+  display:grid;
+  place-items:center;
+  flex:0 0 44px;
+  width:44px;
+  height:44px;
+  border:1px solid #b8cbb8;
+  border-radius:50%;
+  color:var(--green);
+  background:var(--green-soft);
+}
+
+.ticket-check .icon {
+  width:24px;
+  height:24px;
+}
+
+.ticket-pass .ticket-pass-facts {
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:24px;
+  padding:0;
+  border:0;
+}
+
+.ticket-pass-facts .event-fact {
+  align-items:flex-start;
+}
+
+.ticket-pass-facts .event-fact>.icon {
+  flex-shrink:0;
+  margin-top:4px;
+}
+
+.ticket-pass .ticket-code {
+  gap:6px;
+  padding:18px 22px;
+}
+
+.ticket-pass .ticket-code strong {
+  font-size:1.5rem;
+}
+
+.ticket-pass>.ticket-pass-art {
+  height:180px;
+  border-block:1px solid var(--line);
+}
+
+.ticket-attendee {
+  display:grid;
+  gap:12px;
+  padding:24px 30px;
+}
+
+.ticket-pass--inactive .ticket-header {
+  background:#535a54;
+}
+
+.ticket-pass--inactive .ticket-header .eyebrow {
+  color:#fff;
+}
+
+.ticket-pass--inactive .ticket-pass-art {
+  filter:saturate(.3);
+}
+
+.ticket-pass--pending .ticket-header {
+  background:#70522c;
+}
+
+.ticket-pass--pending .ticket-header .eyebrow {
+  color:#fff;
+}
+
+@media (max-width:600px) {
+  .ticket-pass .ticket-header,
+  .ticket-attendee {
+    padding:20px 22px;
+  }
+
+  .ticket-pass .ticket-pass-facts {
+    grid-template-columns:1fr;
+    gap:18px;
+  }
+
+  .ticket-pass>.ticket-pass-art {
+    height:130px;
+  }
+
+  .ticket-pass .ticket-code {
+    padding:16px;
+  }
+
+  .ticket-pass .ticket-code strong {
+    font-size:1.125rem;
+    letter-spacing:1px;
+  }
+
+  .ticket-attendee .order-row {
+    align-items:flex-start;
+    gap:16px;
+  }
+
+  .ticket-attendee .order-row strong {
+    text-align:right;
+  }
+}

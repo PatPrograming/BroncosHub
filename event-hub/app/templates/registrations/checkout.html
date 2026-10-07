@@ -1,7 +1,33 @@
-{#
-  registrations/checkout.html
-  Checkout. UC-003.
-
-  What goes here:
-  - Amount and a demo card-number form
-#}
+{% extends 'base.html' %}
+{% from 'components/ui.html' import icon, event_card, badge, empty_state %}
+{% set event = registration.event %}
+{% block title %}Checkout{% endblock %}
+{% block content %}
+<section class="container page-section">
+  <a class="breadcrumb" href="/my-registrations/{{ registration.id }}">{{ icon('arrow-left') }} Back to registration</a>
+  <div class="page-heading"><div><p class="eyebrow">A SPOT IN YOUR PLANS</p><h1 class="page-title">Let's get you a ticket.</h1><p class="muted">{{ event.title }}</p></div></div>
+  <div class="registration-layout">
+    <div class="card stack reveal">
+      {% if event.status == 'cancelled' or registration.status == 'cancelled' %}<div class="alert alert-warning">This event or registration has been cancelled. Checkout is closed.</div><a class="button button-secondary" href="/events">Explore other events {{ icon('arrow-right') }}</a>{% elif registration.ticket_valid %}<div class="alert alert-success">{{ icon('check') }} Your payment is confirmed and your ticket is ready.</div><a class="button button-primary" href="/my-registrations/{{ registration.id }}">View my ticket {{ icon('ticket') }}</a>{% else %}
+      <div><h2 class="section-title">Payment details</h2><p class="muted small">{% if preview_mode %}A sample checkout. No real card information or payment is needed.{% else %}Review your admission total below.{% endif %}</p></div>
+      {% if registration.payment_status == 'pending' %}<div class="alert alert-warning">Payment is still awaiting confirmation. Your ticket isn't valid yet.</div>{% elif registration.payment_status in ['failed', 'declined'] %}<div class="alert alert-error">The payment wasn't successful. No valid ticket has been issued.</div>{% endif %}
+      {% if preview_mode %}<form action="/registrations/{{ registration.id }}/checkout" method="post" class="stack">
+        <div class="demo-card-fields stack-sm">
+          <div class="payment-method inline">{{ icon('credit-card') }} <strong>Credit or debit card</strong><span class="badge">Sample card</span></div>
+          <div class="field"><label for="sample-card">Card number</label><input id="sample-card" disabled value="••••  ••••  ••••  4242" aria-describedby="sample-card-note"></div>
+          <div class="form-grid"><div class="field"><label for="sample-expiry">Expiration</label><input id="sample-expiry" disabled value="12 / 29"></div><div class="field"><label for="sample-code">Security code</label><input id="sample-code" disabled value="•••"></div></div>
+          <p class="small muted" id="sample-card-note">For the UI preview only. These fields do not accept card details.</p>
+        </div>
+        {% if csrf_token is defined %}<input type="hidden" name="csrf_token" value="{{ csrf_token() if csrf_token is callable else csrf_token }}">{% endif %}
+        {% if errors is defined and errors.demo_result %}<div class="alert alert-error" role="alert" id="checkout-error">{{ errors.demo_result }}</div>{% endif %}
+        <details class="payment-preview"><summary>Preview payment states {{ icon('chevron-down') }}</summary><fieldset class="checkout-options"{% if errors is defined and errors.demo_result %} aria-describedby="checkout-error"{% endif %}><legend>Choose a demo payment result</legend>
+          <label class="checkout-option"><input type="radio" name="demo_result" value="succeeded" checked><span><strong>Successful payment</strong><span class="muted small">Confirm the registration and show a ticket.</span></span>{{ icon('check') }}</label>
+          <label class="checkout-option"><input type="radio" name="demo_result" value="declined"><span><strong>Declined payment</strong><span class="muted small">Show a payment error without issuing a ticket.</span></span>{{ icon('x') }}</label>
+          <label class="checkout-option"><input type="radio" name="demo_result" value="pending"><span><strong>Pending payment</strong><span class="muted small">Keep the registration waiting for confirmation.</span></span>{{ icon('clock') }}</label>
+        </fieldset></details><button class="button button-primary" type="submit">Confirm sample payment · {{ event.price_label }} {{ icon('arrow-right') }}</button>
+      </form>{% else %}<div class="alert alert-warning">Payments are not available yet. Please check back soon.</div><a class="button button-secondary" href="/my-registrations/{{ registration.id }}">Back to registration</a>{% endif %}{% endif %}
+    </div>
+    <aside class="registration-summary card stack reveal"><img class="summary-art" src="{{ event.cover_url|default('', true) or url_for('static', filename='images/' ~ event.art) }}" alt="" width="600" height="400"><div><h2 class="section-title">{{ event.title }}</h2><p class="small muted">{{ event.date_label }} · {{ event.time_label }}</p><p class="small muted">{{ event.location }}</p></div><div class="divider"></div><div class="order-row"><span>Admission × 1</span><strong>{{ event.price_label }}</strong></div><div class="order-row order-total"><span>Total</span><strong>{{ event.price_label }}</strong></div>{% if preview_mode %}<p class="small muted inline">{{ icon('info') }} Demo only. No money is charged.</p>{% endif %}</aside>
+  </div>
+</section>
+{% endblock %}

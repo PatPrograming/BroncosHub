@@ -1,9 +1,44 @@
-{#
-  events/list.html
-  Event list. UC-001, backlog #6, #8.
-
-  What goes here:
-  - Search box and filters (category, date, location)
-  - One card per event: title, time, location, category, price
-  - 'No events match' message when empty
-#}
+{% extends 'base.html' %}
+{% from 'components/ui.html' import icon, event_card, badge, empty_state %}
+{% block title %}Explore events{% endblock %}
+{% block content %}
+<section class="container page-section">
+  <div class="page-heading"><div><p class="eyebrow">YOUR NEXT “I'M GLAD I WENT.”</p><h1 class="page-title">What's happening, Broncos?</h1><p class="muted">Good things are happening all around Santa Clara. Find yours.</p></div><span class="campus-label">{{ icon('pin') }} Santa Clara University</span></div>
+  {% if campus_days %}
+  <section class="campus-week" aria-labelledby="campus-week-title">
+    <div class="campus-week-heading">
+      <div><h2 id="campus-week-title">Find your day.</h2><p>Explore the weeks ahead. Pick a date to see the plans.</p></div>
+      <div class="campus-week-navigation" aria-label="Browse calendar weeks">
+        {% if calendar_previous %}<a class="campus-week-arrow" href="{{ calendar_previous }}" data-campus-week="previous" aria-label="Previous week" aria-controls="campus-calendar">{{ icon('arrow-left') }}</a>{% else %}<button class="campus-week-arrow" disabled aria-label="Previous week">{{ icon('arrow-left') }}</button>{% endif %}
+        <span class="campus-week-range">{{ calendar_range }}</span>
+        {% if calendar_next %}<a class="campus-week-arrow" href="{{ calendar_next }}" data-campus-week="next" aria-label="Next week" aria-controls="campus-calendar">{{ icon('arrow-right') }}</a>{% else %}<button class="campus-week-arrow" disabled aria-label="Next week">{{ icon('arrow-right') }}</button>{% endif %}
+      </div>
+    </div>
+    <div class="campus-week-scroll" id="campus-calendar">
+      <nav class="campus-week-rail" data-calendar="{{ calendar_value }}" aria-label="Events for {{ calendar_range }}">
+        <span class="campus-week-marker" hidden aria-hidden="true"></span>
+        <a class="campus-day campus-day-all" href="{{ clear_date_url }}" data-campus-date="" aria-controls="campus-results"{% if not filters.date %} aria-current="true"{% endif %}><span class="campus-day-weekday">{{ icon('calendar') }} Beyond this week</span><strong>All upcoming</strong><span class="campus-day-count">Every campus plan</span></a>
+        {% for day in campus_days %}<a class="campus-day" href="{{ day.url }}" data-campus-date="{{ day.iso }}" aria-controls="campus-results" aria-label="{{ day.label }}, {{ day.count }} {{ 'event' if day.count == 1 else 'events' }}"{% if day.selected %} aria-current="date"{% endif %}><span class="campus-day-weekday">{{ day.weekday }}</span><strong>{{ day.day }}</strong><span class="campus-day-count">{{ day.count }} {{ 'event' if day.count == 1 else 'events' }}</span></a>{% endfor %}
+      </nav>
+    </div>
+    <div class="campus-week-mobile-actions"><a class="link" href="#campus-results">View plans {{ icon('chevron-down') }}</a></div>
+    <p class="campus-week-status" id="campus-week-status" role="status" aria-live="polite" aria-atomic="true"></p>
+  </section>
+  {% endif %}
+  <details class="campus-filter-disclosure" open>
+    <summary>Search &amp; filters {{ icon('chevron-down') }}</summary>
+    <form id="campus-filters" action="/events" method="get" class="filter-bar surface" role="search" aria-label="Find campus events">
+    {% if campus_days %}<input type="hidden" name="calendar" value="{{ calendar_value }}">{% endif %}
+    <div class="field search-field"><label for="event-search">Search events</label><div class="input-icon">{{ icon('search') }}<input id="event-search" name="q" type="search" value="{{ filters.q|default('') }}" placeholder="Try music, a club, or a study break"></div></div>
+    <div class="field filter-select"><label for="event-category">Category</label><select id="event-category" name="category"><option value="">All categories</option>{% for category in categories %}<option value="{{ category }}" {% if filters.category == category %}selected{% endif %}>{{ category }}</option>{% endfor %}</select></div>
+    <div class="field filter-select"><label for="event-date">When</label><select id="event-date" name="date"><option value="">Any date</option><option value="today" {% if filters.date == 'today' %}selected{% endif %}>Today</option><option value="week" {% if filters.date == 'week' %}selected{% endif %}>This week</option><option value="month" {% if filters.date == 'month' %}selected{% endif %}>This month</option>{% if exact_date_label %}<option value="{{ filters.date }}" selected data-exact-date>{{ exact_date_label }}</option>{% endif %}</select></div>
+    <div class="field filter-select"><label for="event-location">Where</label><input id="event-location" name="location" value="{{ filters.location|default('') }}" placeholder="Any campus venue"></div>
+    <button class="button button-primary" type="submit">Find events {{ icon('arrow-right') }}</button>
+    </form>
+  </details>
+  <section id="campus-results" aria-labelledby="campus-results-title" data-announcement="{{ result_announcement }}" tabindex="-1">
+    <div class="campus-results-heading"><div><h2 id="campus-results-title">{{ date_label|default('All upcoming', true) }}</h2><p class="muted"><strong>{{ events|length }}</strong> {{ 'event' if events|length == 1 else 'events' }} to look forward to{% if filters.q %} for “{{ filters.q }}”{% endif %}</p></div>{% if filters.q or filters.category or filters.date or filters.location %}<a class="link" href="/events">Clear all filters {{ icon('x') }}</a>{% else %}<span class="muted campus-sort-label">Upcoming first</span>{% endif %}</div>
+    {% if events %}<div class="event-grid">{% for event in events %}{{ event_card(event) }}{% endfor %}</div>{% else %}<div class="empty-state surface"><span class="empty-state-icon">{{ icon('search') }}</span><h3 class="section-title">No plans found. Yet.</h3><p class="muted">No events match this date and your filters. Try another day or start fresh.</p><a class="button button-primary" href="{{ clear_date_url|default('/events', true) }}" data-campus-clear>See all upcoming {{ icon('arrow-right') }}</a></div>{% endif %}
+  </section>
+</section>
+{% endblock %}

@@ -1,9 +1,52 @@
-{#
-  base.html
-  Shared layout every page extends: header, navigation menu, flash messages.
-
-  What goes here:
-  - Nav links: Events, My Registrations, Organizer (organizers only), Sign in / Sign out
-  - Link css/style.css and js/main.js
-  - A {% block content %} where each page puts its own content
-#}
+{% from 'components/ui.html' import icon %}
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#9d2337">
+  <meta name="description" content="Your campus. Your people. Discover events and make plans at Santa Clara University with BroncosHub.">
+  <title>{% block title %}Your campus, happening{% endblock %} · BroncosHub</title>
+  <link rel="icon" href="{{ url_for('static', filename='images/favicon.svg') }}" type="image/svg+xml">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/campus-week.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/organizer-preview.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/ticket.css') }}">
+  <noscript><style>@media(max-width:820px){.site-navigation{display:flex}.menu-toggle{display:none}}</style></noscript>
+  <script src="{{ url_for('static', filename='js/campus-week.js') }}" defer></script>
+  <script src="{{ url_for('static', filename='js/organizer-preview.js') }}" defer></script>
+  <script src="{{ url_for('static', filename='js/main.js') }}" defer></script>
+  {% block page_assets %}{% endblock %}
+</head>
+<body>
+<a class="skip-link" href="#main-content">Skip to content</a>
+{% if preview_mode %}
+<aside class="preview-bar" aria-label="UI preview controls"><div class="container preview-inner">
+  <span><span class="preview-dot"></span>UI preview <span class="preview-description">· Fictional sample events</span></span>
+  <details class="preview-menu"><summary>View as {{ user.role|default('guest')|title }} {{ icon('chevron-down') }}</summary><div class="preview-options">
+    {% for role in ['student','organizer','admin','guest'] %}<a href="/preview/role/{{ role }}">{{ role|title }} view</a>{% endfor %}<a href="/preview/reset">Reset sample data</a>
+  </div></details>
+</div></aside>
+{% endif %}
+<header class="site-header"><div class="container header-inner">
+  <a class="brand" href="/" aria-label="BroncosHub home"><span class="brand-mark">{{ icon('horseshoe') }}</span>Broncos<span>Hub</span><span class="brand-dot">.</span></a>
+  <button class="icon-button menu-toggle" aria-label="Open navigation" aria-expanded="false" aria-controls="site-navigation">{{ icon('menu') }}</button>
+  <nav id="site-navigation" class="site-navigation" aria-label="Main navigation"><div class="nav-links">
+    {% for key,label,path in [('home','Home','/'),('explore','Explore','/events'),('my-events','My Events','/my-registrations')] %}<a href="{{ '/login?next=/my-registrations' if key == 'my-events' and not user else path }}" class="nav-link{% if active_nav == key %} is-active{% endif %}"{% if active_nav == key %} aria-current="page"{% endif %}>{{ label }}</a>{% endfor %}
+    {% if user and user.role == 'organizer' %}<a class="nav-link{% if active_nav == 'organizer' %} is-active{% endif %}" href="/organizer/"{% if active_nav == 'organizer' %} aria-current="page"{% endif %}>Organize</a>{% endif %}
+    {% if user and user.role == 'admin' %}<a class="nav-link{% if active_nav == 'admin' %} is-active{% endif %}" href="/admin/reports">Reports</a>{% endif %}
+  </div><div class="nav-account">
+    {% if user and user.role != 'guest' %}<span class="campus-label">SCU COMMUNITY</span><a href="/profile" class="profile-link" aria-label="Your profile"><span class="avatar">{{ user.first_name[0]|default('B') }}</span><span class="profile-name">{{ user.first_name|default('Bronco') }}</span></a>
+    {% else %}<a href="/login" class="nav-link">Log in</a><a href="/signup" class="button button-primary button-small">Join the herd {{ icon('arrow-up-right') }}</a>{% endif %}
+  </div></nav>
+</div></header>
+<main id="main-content" tabindex="-1">
+  {% with messages = get_flashed_messages(with_categories=true) %}{% if messages %}<div class="container flash-messages" aria-live="polite">{% for category,message in messages %}<div class="alert alert-{{ category }}">{{ icon('info') }}<span>{{ message }}</span></div>{% endfor %}</div>{% endif %}{% endwith %}
+  {% block content %}{% endblock %}
+</main>
+<footer class="site-footer"><div class="container footer-inner"><a class="brand footer-brand" href="/">BroncosHub<span class="brand-dot">.</span></a><p>Your campus. Your people. Your next plan.</p><span class="footer-campus">Made for the SCU community {{ icon('horseshoe') }}</span></div></footer>
+<dialog id="confirm-dialog" class="confirm-dialog" aria-labelledby="confirm-title" aria-describedby="confirm-message">
+  <button type="button" class="icon-button dialog-close" data-dialog-close aria-label="Close confirmation">{{ icon('x') }}</button>
+  <span class="dialog-symbol">{{ icon('alert') }}</span><h2 id="confirm-title" class="section-title">Are you sure?</h2><p id="confirm-message" class="muted"></p>
+  <div class="form-actions"><button type="button" class="button button-secondary" data-dialog-close autofocus>Keep it</button><button type="button" class="button button-primary" id="confirm-action">Yes, continue</button></div>
+</dialog>
+</body></html>

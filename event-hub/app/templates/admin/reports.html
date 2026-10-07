@@ -1,7 +1,18 @@
-{#
-  admin/reports.html
-  Reported events. Backlog #29.
-
-  What goes here:
-  - List of reports with a remove action
-#}
+{% extends "base.html" %}
+{% from "components/ui.html" import icon, badge, empty_state %}
+{% block title %}Reported events{% endblock %}
+{% block content %}
+<section class="container page-section reports-page">
+  <div class="page-heading"><div><p class="eyebrow">Community care</p><h1 class="page-title">Reported events.</h1><p class="muted">Review reported events and take action when needed.</p></div><span class="reports-count">{{ reports|length }} {{ 'report' if reports|length == 1 else 'reports' }} to review</span></div>
+  {% if preview_mode %}<div class="alert alert-warning small">Demo reports only. Actions here change this preview session, not real events.</div>{% endif %}
+  {% if reports %}
+  <div class="card table-wrap reports-table">
+    <table class="data-table">
+      <caption class="small muted">Reports awaiting review</caption>
+      <thead><tr><th scope="col">Event</th><th scope="col">Reason</th><th scope="col">Reported</th><th scope="col">Action</th></tr></thead>
+      <tbody>{% for report in reports %}<tr><td><a class="link" href="/events/{{ report.event.id }}">{{ report.event.title }}</a><p class="small muted">By {{ report.reporter }}</p></td><td><span class="table-mobile-label" aria-hidden="true">Reason</span>{{ report.reason }}</td><td class="small"><span class="table-mobile-label" aria-hidden="true">Reported</span>{{ report.date_label }}</td><td><form id="remove-report-{{ report.id }}" action="/admin/reports/{{ report.id }}/remove" method="post">{% if csrf_token is defined %}<input type="hidden" name="csrf_token" value="{{ csrf_token() if csrf_token is callable else csrf_token }}">{% endif %}<button class="button btn-danger button-small" type="button" data-confirm-form="remove-report-{{ report.id }}" data-confirm-title="Remove this event?" data-confirm-label="Remove event" data-confirm-cancel-label="Keep event" data-confirm-message="The event will be removed from discovery and will no longer accept registrations.">{{ icon('trash') }} Remove event</button></form></td></tr>{% endfor %}</tbody>
+    </table>
+  </div>
+  {% else %}{{ empty_state('All caught up.', 'There are no event reports waiting for review.', '/events', 'Back to events', 'check') }}{% endif %}
+</section>
+{% endblock %}
