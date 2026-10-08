@@ -14,13 +14,20 @@
       <div><p class="eyebrow">Back for more</p><h1 class="page-title auth-task-title">Welcome back, Bronco.</h1><p class="muted">Your next campus plan is waiting.</p></div>
       {% if preview_mode %}<div class="alert alert-warning small">UI demo — password entry is disabled. No real sign-in takes place.</div>{% endif %}
       {% if field_errors %}<div class="alert alert-error" role="alert"><strong>Check your details and try again.</strong><ul>{% for field,message in field_errors.items() %}<li>{{ message }}</li>{% endfor %}</ul></div>{% endif %}
+      {% if preview_mode %}
       <form class="auth-form stack" method="post" action="/login">
         {% if next_url is defined %}<input type="hidden" name="next" value="{{ next_url }}">{% endif %}
         {% if csrf_token is defined %}<input type="hidden" name="csrf_token" value="{{ csrf_token() if csrf_token is callable else csrf_token }}">{% endif %}
-        <div class="field"><label for="email">SCU email</label><input id="email" name="email" type="email" required autocomplete="username" placeholder="you@scu.edu" value="{{ 'demo@scu.edu' if preview_mode else values.get('email', '') }}"{% if preview_mode %} readonly aria-describedby="demo-email-note"{% endif %}{% if field_errors.get('email') %} aria-invalid="true"{% endif %}>{% if preview_mode %}<p id="demo-email-note" class="small muted">A sample account for exploring the pages.</p>{% endif %}{% if field_errors.get('email') %}<p class="small">{{ field_errors.email }}</p>{% endif %}</div>
-        <div class="field"><label for="password">Password</label><input id="password" name="password" type="password" autocomplete="current-password"{% if preview_mode %} disabled placeholder="••••••••••••"{% else %} required{% endif %}{% if field_errors.get('password') %} aria-invalid="true" aria-describedby="password-error"{% endif %}>{% if field_errors.get('password') %}<p id="password-error" class="small">{{ field_errors.password }}</p>{% endif %}</div>
-        <button class="button button-primary" type="submit">{{ 'Explore the demo' if preview_mode else 'Sign in' }} {{ icon('arrow-right') }}</button>
+        <div class="field"><label for="email">SCU email</label><input id="email" name="email" type="email" required autocomplete="username" placeholder="you@scu.edu" value="demo@scu.edu" readonly aria-describedby="demo-email-note"{% if field_errors.get('email') %} aria-invalid="true"{% endif %}><p id="demo-email-note" class="small muted">A sample account for exploring the pages.</p>{% if field_errors.get('email') %}<p class="small">{{ field_errors.email }}</p>{% endif %}</div>
+        <div class="field"><label for="password">Password</label><input id="password" name="password" type="password" autocomplete="current-password" disabled placeholder="••••••••••••"{% if field_errors.get('password') %} aria-invalid="true" aria-describedby="password-error"{% endif %}>{% if field_errors.get('password') %}<p id="password-error" class="small">{{ field_errors.password }}</p>{% endif %}</div>
+        <button class="button button-primary" type="submit">Explore the demo {{ icon('arrow-right') }}</button>
       </form>
+      {% else %}
+      <div class="auth-form stack">
+        <p class="small muted">Use the Google account for your @scu.edu email.</p>
+        <a class="button button-primary" href="/auth/google{% if next_url %}?next={{ next_url|urlencode }}{% endif %}">Continue with Google {{ icon('arrow-right') }}</a>
+      </div>
+      {% endif %}
       <p class="small muted">New around here? <a class="link" href="/signup">Join BroncosHub</a></p>
       <a class="link small" href="/events">{{ icon('arrow-left') }} Keep exploring events</a>
     </div>

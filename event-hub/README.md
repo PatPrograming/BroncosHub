@@ -8,13 +8,31 @@ Team: Jaden Hill, Patrick Zhang, Ethan Can
 
 ## Run it locally
 
+From the `event-hub` folder. On macOS, `python` is not a command until the virtual environment below is active.
+
 ```bash
-python -m venv .venv
+cd event-hub
+python3 -m venv .venv
 source .venv/bin/activate          # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
 cp .env.example .env               # Windows: copy .env.example .env
-python -m scripts.seed             # demo users + events
-python run.py                      # http://127.0.0.1:5000
+```
+
+Open `.env` and set `SECRET_KEY` to any long random string. Set `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` from the Google Auth Platform web client. Leave `ALLOWED_EMAIL_DOMAIN=scu.edu`. The client secret is shown only once; it belongs in `.env`, which is gitignored, not in `.env.example`.
+
+In Google Cloud Console, the web client's authorized redirect URI must be exactly:
+
+`http://127.0.0.1:5000/auth/google/callback`
+
+Start the site and leave that Terminal window open:
+
+```bash
+python run.py
+```
+
+Open **http://127.0.0.1:5000/login** (use `127.0.0.1`, not `localhost`). Choose **Continue with Google** and sign in with a verified `@scu.edu` account. The first visit creates a student account; a later visit signs that person in. Press Control+C in the same Terminal window to stop the server.
+
+```bash
 pytest                             # run the tests
 ```
 

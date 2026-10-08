@@ -1,11 +1,48 @@
 # app/__init__.py
 # Builds the website (Flask's standard name for this is the 'app').
-#
-# What goes here:
-#   create_app(config_class) function that:
-#     - creates the Flask app and loads settings from config.py
-#     - connects the database (db) and sign-in system (login_manager) from extensions.py
-#     - imports the models so the database knows every table
-#     - registers the blueprints from app/routes/ (auth, events, registrations, organizer, admin)
-#     - adds the home page route '/'
-#     - creates the database tables
+from flask import Flask, render_template
+from flask_login import current_user
+
+from app.extensions import db, login_manager, oauth
+from config import Config
+
+
+def create_app(config_class=Config):
+    app = Flask(__name__)
+    app.config.from_object(config_class)
+
+    db.init_app(app)
+    login_manager.init_app(app)
+    oauth.init_app(app)
+    oauth.register(
+        name="google",
+        overwrite=True,
+        client_id=app.config["GOOGLE_CLIENT_ID"],
+        client_secret=app.config["GOOGLE_CLIENT_SECRET"],
+        server_metadata_url="https://accounts.google.com/.well-known/openid-configuration",
+        client_kwargs={"scope": "openid email profile"},
+    )
+
+    from app import models  # noqa: F401
+    from app.routes.auth import auth_bp
+
+    app.register_blueprint(auth_bp)
+
+    @app.context_processor
+    def inject_account():
+        user = current_user.account_view() if current_user.is_authenticated else None
+        return {"user": user, "preview_mode": False}
+
+    @app.route("/")
+    def home():
+        return render_template(
+            "index.html",
+            events=[],
+            categories=[],
+            active_nav="home",
+        )
+
+    with app.app_context():
+        db.create_all()
+
+    return app
