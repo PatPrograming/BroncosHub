@@ -22,6 +22,8 @@ class User(UserMixin, db.Model):
     role = db.Column(db.String(20), nullable=False, default="student")
     year_level = db.Column(db.String(20), nullable=True)
     created_at = db.Column(db.DateTime, nullable=False, default=_utcnow)
+    events = db.relationship("Event", back_populates = 'organizer' )
+    registrations = db.relationship("Registration", back_populates="student")
 
     def account_view(self):
         name = self.name or "Bronco"
