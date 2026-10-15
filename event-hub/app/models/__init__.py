@@ -3,6 +3,8 @@
 from app.models.event import Event
 from app.models.user import User
 from app.models.registration import Registration
+from app.models.payment import Payment
+from app.models.ticket import Ticket
 from app.models.report import Report
 
-__all__ = ["Event", "User", "Registration", "Report"]
+__all__ = ["Event", "User", "Registration", "Payment", "Ticket", "Report"]

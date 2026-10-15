@@ -21,10 +21,40 @@ class Registration(db.Model):
     status = db.Column(db.String(20), nullable= False, default = "pending")
     created_at = db.Column(db.DateTime, default= _utcnow, nullable= False)
     student = db.relationship("User", back_populates="registrations")
-    event = db.relationship("Event", back_populates = "registrations")
-     
+    event = db.relationship("Event", back_populates="registrations")
+    payment = db.relationship("Payment", back_populates="registration", uselist=False)
+    ticket = db.relationship("Ticket", back_populates="registration", uselist=False)
+
     @property
     def is_confirmed(self):
         return self.status == "confirmed"
+
+    def registration_view(self):
+        payment = self.payment
+        if self.event.is_free:
+            payment_status = "not_required"
+        elif payment is None:
+            payment_status = "failed" if self.status == "failed" else "pending"
+        elif payment.status == "declined":
+            payment_status = "failed"
+        else:
+            payment_status = payment.status
+        ticket = self.ticket
+        ticket_valid = bool(
+            ticket
+            and ticket.is_valid
+            and self.status == "confirmed"
+            and self.event.status == "published"
+            and payment is not None
+            and payment.status == "succeeded"
+        )
+        return {
+            "id": self.id,
+            "status": self.status,
+            "payment_status": payment_status,
+            "ticket_code": ticket.code if ticket_valid else None,
+            "ticket_valid": ticket_valid,
+            "event": self.event.event_view(),
+        }
 
      
