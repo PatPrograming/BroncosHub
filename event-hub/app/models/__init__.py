@@ -3,5 +3,6 @@
 from app.models.event import Event
 from app.models.user import User
 from app.models.registration import Registration
+from app.models.report import Report
 
-__all__ = ["Event", "User", "Registration"]
+__all__ = ["Event", "User", "Registration", "Report"]

@@ -1,8 +1,30 @@
 {% extends "base.html" %}
 {% from "components/ui.html" import icon, badge, empty_state %}
 {% block title %}Reported events{% endblock %}
+{% block page_assets %}<link rel="stylesheet" href="{{ url_for('static', filename='css/moderation.css') }}">{% endblock %}
 {% block content %}
 <section class="container page-section reports-page">
+  {% if moderation_enabled|default(false) %}
+  <div class="page-heading moderation-heading"><div><p class="eyebrow">Community care</p><h1 class="page-title">A better campus space.</h1><p class="muted">Take a closer look at reported events and help keep BroncosHub welcoming.</p></div><span class="moderation-heading-symbol">{{ icon('users') }}</span></div>
+  <nav class="tabs moderation-tabs" aria-label="Report status">
+    <a class="tab{% if filter_status == 'pending' %} is-active{% endif %}" href="/admin/reports?status=pending"{% if filter_status == 'pending' %} aria-current="page"{% endif %}>Pending <span>{{ counts.pending }}</span></a>
+    <a class="tab{% if filter_status == 'resolved' %} is-active{% endif %}" href="/admin/reports?status=resolved"{% if filter_status == 'resolved' %} aria-current="page"{% endif %}>Resolved <span>{{ counts.resolved }}</span></a>
+  </nav>
+  <div class="section-heading moderation-queue-heading"><h2 class="section-title">{{ 'Ready for a review.' if filter_status == 'pending' else 'The review history.' }}</h2><span class="small muted">{{ reports|length }} {{ 'report' if reports|length == 1 else 'reports' }}</span></div>
+  {% if reports %}
+  <div class="moderation-queue">
+    {% for report in reports %}
+    <article class="card moderation-report-row">
+      <img class="moderation-report-art" src="{{ report.event.cover_url|default('', true) or url_for('static', filename='images/' ~ report.event.art) }}" alt="" width="160" height="120">
+      <div class="moderation-report-main"><div class="inline"><p class="eyebrow">Report #{{ report.id }}</p><span class="badge {{ 'badge-amber' if report.status == 'pending' else 'badge-red' if report.status == 'removed' else 'badge-green' }}">{{ 'Pending review' if report.status == 'pending' else 'Event removed' if report.status == 'removed' else 'Dismissed' }}</span></div><h3><a href="/admin/reports/{{ report.id }}">{{ report.event.title }}</a></h3><p class="moderation-reason">{{ report.reason }}</p><p class="small muted">Reported by {{ report.reporter }} · {{ report.date_label }}</p></div>
+      <a class="button button-secondary button-small" href="/admin/reports/{{ report.id }}">{{ 'Review report' if report.status == 'pending' else 'View review' }} {{ icon('arrow-right') }}</a>
+    </article>
+    {% endfor %}
+  </div>
+  {% elif filter_status == 'pending' %}{{ empty_state('All caught up.', 'There are no reports waiting for review. New reports will appear here.', symbol='check') }}
+  {% else %}{{ empty_state('No reviews yet.', 'Once a report is reviewed, you’ll find the decision and notes here.', symbol='list') }}{% endif %}
+  <p class="moderation-footnote small muted">{{ icon('info') }} A report raises a concern. Review the event and report before deciding what to do.</p>
+  {% else %}
   <div class="page-heading"><div><p class="eyebrow">Community care</p><h1 class="page-title">Reported events.</h1><p class="muted">Review reported events and take action when needed.</p></div><span class="reports-count">{{ reports|length }} {{ 'report' if reports|length == 1 else 'reports' }} to review</span></div>
   {% if preview_mode %}<div class="alert alert-warning small">Demo reports only. Actions here change this preview session, not real events.</div>{% endif %}
   {% if reports %}
@@ -14,5 +36,6 @@
     </table>
   </div>
   {% else %}{{ empty_state('All caught up.', 'There are no event reports waiting for review.', '/events', 'Back to events', 'check') }}{% endif %}
+  {% endif %}
 </section>
 {% endblock %}

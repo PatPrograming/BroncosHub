@@ -2,13 +2,16 @@
 {% from "components/ui.html" import icon, badge, empty_state %}
 {% block title %}Event statistics{% endblock %}
 {% block content %}
+{% set can_manage = event_management_available|default(true) %}
+{% set can_browse = event_browsing_available|default(true) %}
+{% set has_revenue = stats.revenue_available|default(true) %}
 <section class="container page-section event-statistics">
   <a class="breadcrumb" href="/organizer/">{{ icon('arrow-left') }} Organizer studio</a>
-  <div class="page-heading"><div><p class="eyebrow">Event statistics</p><h1 class="page-title">{{ event.title }}</h1><div class="inline event-statistics-context"><span class="muted">{{ event.date_label }} · {{ event.time_label }}</span>{{ badge(event.status) }}</div></div><a class="button button-secondary" href="/events/{{ event.id }}">View event {{ icon('arrow-up-right') }}</a></div>
+  <div class="page-heading"><div><p class="eyebrow">Event statistics</p><h1 class="page-title">{{ event.title }}</h1><div class="inline event-statistics-context"><span class="muted">{{ event.date_label }} · {{ event.time_label }}</span>{{ badge(event.status) }}</div></div>{% if can_browse %}<a class="button button-secondary" href="/events/{{ event.id }}">View event {{ icon('arrow-up-right') }}</a>{% endif %}</div>
   <div class="stat-grid">
-    <div class="stat-card"><span class="muted small">Active registrations</span><strong>{{ stats.registrations }}</strong><span class="small">Expected attendance</span></div>
-    <div class="stat-card"><span class="muted small">Confirmed revenue</span><strong>{{ stats.revenue_label }}</strong><span class="small">Successful payments only</span></div>
-    <div class="stat-card"><span class="muted small">Event capacity</span><strong>{{ event.capacity }}</strong><span class="small">{{ 'Registration closed' if event.status == 'cancelled' else event.spots_left|string ~ ' spots remaining' }}</span></div>
+    <div class="stat-card"><span class="muted small">Confirmed registrations</span><strong>{{ stats.registrations }}</strong><span class="small">Sign-ups, not check-ins</span></div>
+    <div class="stat-card"><span class="muted small">Confirmed revenue</span><strong{% if not has_revenue %} aria-label="Not available"{% endif %}>{{ stats.revenue_label }}</strong><span class="small">{{ 'Successful payments only' if has_revenue else 'Payments aren’t available yet' }}</span></div>
+    <div class="stat-card"><span class="muted small">Event capacity</span><strong>{{ 'No limit' if event.capacity is none else event.capacity }}</strong><span class="small">{% if event.status == 'cancelled' %}Registration closed{% elif event.capacity is none %}No capacity limit{% else %}{{ event.spots_left }} spots remaining{% endif %}</span></div>
   </div>
   <div class="workspace-layout">
     <div class="workspace-main card stack">
@@ -18,7 +21,7 @@
       {% else %}{{ empty_state('A fresh start.', 'Your registration breakdown will appear when people start signing up.') }}{% endif %}
       <p class="small muted">Year level is optional. People who haven’t shared it are counted as Unknown.</p>
     </div>
-    <aside class="workspace-aside surface stack"><p class="eyebrow">Reading the numbers</p><h2 class="section-title">What these numbers mean.</h2><p class="small muted">Registration counts tell you how many people plan to come. They are not an attendance or check-in count.</p><p class="small muted">Revenue includes confirmed payments only. Pending and failed payments are excluded.</p>{% if event.status != 'cancelled' %}<a class="link" href="/organizer/events/{{ event.id }}/edit">Edit event details {{ icon('arrow-right') }}</a>{% endif %}</aside>
+    <aside class="workspace-aside surface stack"><p class="eyebrow">Reading the numbers</p><h2 class="section-title">What these numbers mean.</h2><p class="small muted">Only confirmed registrations are counted. Pending and cancelled registrations are left out. These numbers show sign-ups, not actual attendance.</p>{% if event.status == 'cancelled' %}<p class="small muted">This event is cancelled. Any confirmed registrations still on record remain visible here.</p>{% endif %}<p class="small muted">{% if has_revenue %}Revenue includes confirmed payments only. Pending and failed payments are excluded.{% else %}Revenue will appear once payments are available. Sign-ups alone don’t tell us how much has been paid.{% endif %}</p>{% if can_manage and event.status != 'cancelled' %}<a class="link" href="/organizer/events/{{ event.id }}/edit">Edit event details {{ icon('arrow-right') }}</a>{% endif %}</aside>
   </div>
 </section>
 {% endblock %}

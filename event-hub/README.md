@@ -36,6 +36,34 @@ Open **http://127.0.0.1:5000/login** (use `127.0.0.1`, not `localhost`). Choose 
 pytest                             # run the tests
 ```
 
+## Organizer dashboard
+
+The real app now serves `/organizer/` and `/organizer/events/<id>/stats` for
+organizer/admin accounts, limited to their own events. It counts confirmed
+registrations, shows remaining capacity and groups signups by year. Revenue
+stays unavailable until Payment records are implemented.
+
+For a ready-to-use local demo, run `python tools/preview_organizer.py --port 5075`
+and open **http://localhost:5075/demo**, or use **Start Organizer Demo.command**
+in the repository root. This uses the real routes and models with fictional
+records in a separate in-memory database. It does not seed, reset or sign into
+the real application. See [integration notes](docs/ui-integration.md) for the
+count definitions, tests and remaining dependencies.
+
+## Event moderation
+
+Signed-in users can report another organizer's published event at
+`/events/<id>/report`. Admins review pending and resolved reports at
+`/admin/reports`. Dismissing a report leaves the event unchanged; removing an
+event marks it cancelled, cancels active registrations and resolves its pending
+reports. Each decision records the admin, time and reason. These routes enforce
+roles and CSRF checks; the report history is kept in the new `Report` table.
+
+Try **http://localhost:5075/demo/admin** in the same isolated demo. The top bar
+switches between organizer, admin and student reporting views. No real accounts
+or event records are changed. The public event page still needs its reporting
+link connected when Jaden's route is ready; payments/refunds remain unfinished.
+
 ## Where things go
 
 ```
@@ -46,13 +74,14 @@ event-hub/
 ├── app/
 │   ├── __init__.py        create_app(): wires everything together
 │   ├── extensions.py      Database + sign-in manager
-│   ├── models/            Database tables (User, Event, Registration, Payment, Ticket)
+│   ├── models/            User, Event, Registration, Report; Payment/Ticket unfinished
 │   ├── routes/            URLs and page handlers, one file per area
 │   │   ├── auth.py            sign up / sign in / profile        #1, #2, #22
 │   │   ├── events.py          browse, search, details            UC-001
 │   │   ├── registrations.py   register, pay, my registrations    UC-002 to UC-005
 │   │   ├── organizer.py       create, edit, cancel, stats        UC-006 to UC-008
-│   │   └── admin.py           moderation                         #29
+│   │   ├── reporting.py       submit event reports               #29
+│   │   └── admin.py           review / dismiss / remove          #29
 │   ├── services/          Business rules (registration, mock payments, stats)
 │   ├── templates/         HTML pages (Jinja2), same folders as routes
 │   └── static/            css/, js/, img/

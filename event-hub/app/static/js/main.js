@@ -35,6 +35,7 @@
       event.preventDefault();
       pendingForm = document.getElementById(button.dataset.confirmForm);
       if (!pendingForm) return;
+      if (!pendingForm.reportValidity()) { pendingForm = null; return; }
       trigger = button;
       document.querySelector('#confirm-title').textContent = button.dataset.confirmTitle || 'Are you sure?';
       document.querySelector('#confirm-message').textContent = button.dataset.confirmMessage || 'Please confirm before continuing.';

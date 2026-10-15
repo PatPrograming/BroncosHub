@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% from "components/ui.html" import icon, badge %}
+{% set field_errors = errors|default({}) %}
+{% set values = form_values|default({}) %}
+{% set submitted_action = attempted_action|default('') %}
+{% block title %}Review report #{{ report.id }}{% endblock %}
+{% block page_assets %}<link rel="stylesheet" href="{{ url_for('static', filename='css/moderation.css') }}">{% endblock %}
+{% block content %}
+<section class="container page-section moderation-detail">
+  <a class="breadcrumb" href="/admin/reports?status={{ 'pending' if report.status == 'pending' else 'resolved' }}">{{ icon('arrow-left') }} Report queue</a>
+  <div class="page-heading"><div><p class="eyebrow">Community care · Report #{{ report.id }}</p><h1 class="page-title">{{ 'Let’s take a closer look.' if report.status == 'pending' else 'Review complete.' }}</h1><p class="muted">{{ 'Read the report alongside the event details before making a decision.' if report.status == 'pending' else 'The report and decision are saved below.' }}</p></div><span class="badge {{ 'badge-amber' if report.status == 'pending' else 'badge-red' if report.status == 'removed' else 'badge-green' }}">{{ 'Pending review' if report.status == 'pending' else 'Event removed' if report.status == 'removed' else 'Dismissed' }}</span></div>
+  {% if field_errors %}<div class="alert alert-error moderation-errors" role="alert"><strong>Your review needs one more detail.</strong><ul>{% for field, message in field_errors.items() %}<li>{{ message }}</li>{% endfor %}</ul></div>{% endif %}
+  <div class="moderation-review-grid">
+    <article class="card moderation-event-card">
+      <img class="moderation-event-art" src="{{ event.cover_url|default('', true) or url_for('static', filename='images/' ~ event.art) }}" alt="" width="720" height="420">
+      <div class="moderation-event-body stack">
+        <div class="stack-sm"><div class="inline"><p class="eyebrow">{{ event.category }}</p>{{ badge(event.status) }}</div><h2 class="section-title">{{ event.title }}</h2><p class="muted">Hosted by <strong>{{ event.organizer }}</strong></p></div>
+        <dl class="moderation-event-facts"><div><dt>{{ icon('calendar') }} Date & time</dt><dd>{{ event.date_label }}<span class="muted">{{ event.time_label }}</span></dd></div><div><dt>{{ icon('pin') }} Location</dt><dd>{{ event.location }}</dd></div><div><dt>{{ icon('ticket') }} Admission</dt><dd>{{ event.price_label }}</dd></div></dl>
+        <div class="stack-sm"><h3>About this event</h3><p class="moderation-prose muted">{{ event.description or 'No description was provided.' }}</p></div>
+        {% if event_browsing_available|default(false) %}<a class="link" href="/events/{{ event.id }}">Open event page {{ icon('arrow-up-right') }}</a>{% endif %}
+      </div>
+    </article>
+    <div class="stack moderation-report-context">
+      <article class="card stack"><div><p class="eyebrow">The concern</p><h2 class="section-title">{{ report.reason }}</h2></div><p class="moderation-prose">{{ report.details }}</p><dl class="moderation-report-meta"><div><dt>Reported by</dt><dd>{{ report.reporter }}</dd></div><div><dt>Received</dt><dd>{{ report.date_label }}</dd></div></dl></article>
+      {% if report.status == 'pending' %}
+      <aside class="surface moderation-review-note"><p class="inline">{{ icon('eye') }} <strong>Review with context.</strong></p><p class="small muted">A report alone doesn’t mean the event should be removed. Check the details, then record a short reason for your decision.</p></aside>
+      {% else %}
+      <article class="card stack moderation-resolution"><div><p class="eyebrow">The decision</p><h2 class="section-title">{{ 'Event removed.' if report.status == 'removed' else 'Report dismissed.' }}</h2></div><p class="moderation-prose">{{ report.review_note }}</p><dl class="moderation-report-meta"><div><dt>Reviewed by</dt><dd>{{ report.reviewed_by or 'Administrator' }}</dd></div><div><dt>Reviewed</dt><dd>{{ report.reviewed_date_label }}</dd></div></dl><p class="small muted">{{ 'This event is unavailable for new registrations.' if report.status == 'removed' else 'Dismissing this report did not change the event.' }}</p></article>
+      {% endif %}
+    </div>
+  </div>
+  {% if report.status == 'pending' %}
+  <section class="moderation-decisions" aria-labelledby="decision-heading">
+    <div class="section-heading"><div><p class="eyebrow">Next step</p><h2 class="section-title" id="decision-heading">Make the call.</h2></div></div>
+    <div class="moderation-decision-grid">
+      <form class="card stack moderation-decision-card" action="/admin/reports/{{ report.id }}/dismiss" method="post">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() if csrf_token is callable else csrf_token }}">
+        <div class="stack-sm"><span class="moderation-decision-symbol">{{ icon('check') }}</span><h3>Dismiss this report</h3><p class="muted">Close the report without changing the event or its registrations.</p></div>
+        <div class="field"><label for="dismiss-review-note">Reason for dismissing</label><textarea id="dismiss-review-note" name="review_note" rows="3" required minlength="10" maxlength="1000" placeholder="Explain why no action is needed." aria-describedby="dismiss-note-help{% if submitted_action == 'dismiss' and field_errors.get('review_note') %} dismiss-note-error{% endif %}"{% if submitted_action == 'dismiss' and field_errors.get('review_note') %} aria-invalid="true"{% endif %}>{{ values.get('review_note', '') if submitted_action == 'dismiss' else '' }}</textarea><p id="dismiss-note-help" class="small muted">10–1,000 characters. Saved in the admin review history.</p>{% if submitted_action == 'dismiss' and field_errors.get('review_note') %}<p id="dismiss-note-error" class="field-error">{{ field_errors.review_note }}</p>{% endif %}</div>
+        <button class="button button-secondary" type="submit">Dismiss report {{ icon('check') }}</button>
+      </form>
+      <form class="card stack moderation-decision-card moderation-remove-card" id="remove-report-{{ report.id }}" action="/admin/reports/{{ report.id }}/remove" method="post">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() if csrf_token is callable else csrf_token }}">
+        <div class="stack-sm"><span class="moderation-decision-symbol">{{ icon('trash') }}</span><h3>Remove this event</h3><p class="muted">Make the event unavailable and cancel its active registrations. This does not issue refunds.</p></div>
+        <div class="field"><label for="remove-review-note">Reason for removal</label><textarea id="remove-review-note" name="review_note" rows="3" required minlength="10" maxlength="1000" placeholder="Explain why this event needs to be removed." aria-describedby="remove-note-help{% if submitted_action == 'remove' and field_errors.get('review_note') %} remove-note-error{% endif %}"{% if submitted_action == 'remove' and field_errors.get('review_note') %} aria-invalid="true"{% endif %}>{{ values.get('review_note', '') if submitted_action == 'remove' else '' }}</textarea><p id="remove-note-help" class="small muted">10–1,000 characters. Saved in the admin review history.</p>{% if submitted_action == 'remove' and field_errors.get('review_note') %}<p id="remove-note-error" class="field-error">{{ field_errors.review_note }}</p>{% endif %}</div>
+        <button class="button btn-danger" type="submit" data-confirm-form="remove-report-{{ report.id }}" data-confirm-title="Remove this event?" data-confirm-label="Remove event" data-confirm-cancel-label="Go back" data-confirm-message="The event will become unavailable, and its active registrations will be cancelled. This does not issue refunds. Your reason will be saved in the review history.">Remove event {{ icon('trash') }}</button>
+      </form>
+    </div>
+  </section>
+  {% endif %}
+</section>
+{% endblock %}

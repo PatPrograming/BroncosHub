@@ -1,3 +1,3 @@
 {% extends 'base.html' %}{% from 'components/ui.html' import icon %}
 {% block title %}{{ title }}{% endblock %}
-{% block content %}<section class="container page-section"><div class="empty-state"><span class="eyebrow">{{ status }}</span><h1 class="page-title">{{ title }}</h1><p class="muted">{{ message }}</p><a class="button button-primary" href="/events">Back to Explore {{ icon('arrow-right') }}</a></div></section>{% endblock %}
+{% block content %}<section class="container page-section"><div class="empty-state"><span class="eyebrow">{{ status }}</span><h1 class="page-title">{{ title }}</h1><p class="muted">{{ message }}</p><a class="button button-primary" href="{{ return_url|default('/events') }}">{{ return_label|default('Back to Explore') }} {{ icon('arrow-right') }}</a></div></section>{% endblock %}

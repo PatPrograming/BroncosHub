@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% from "components/ui.html" import icon %}
+{% set field_errors = errors|default({}) %}
+{% set values = form_values|default({}) %}
+{% set already_reported = existing_report|default(none) %}
+{% set can_browse = event_browsing_available|default(false) %}
+{% block title %}Report an event{% endblock %}
+{% block page_assets %}<link rel="stylesheet" href="{{ url_for('static', filename='css/moderation.css') }}">{% endblock %}
+{% block content %}
+<section class="container page-section report-intake-page">
+  <a class="breadcrumb" href="{{ '/events/' ~ event.id if can_browse else '/profile' }}">{{ icon('arrow-left') }} {{ 'Back to event' if can_browse else 'Back to your profile' }}</a>
+  <div class="page-heading"><div><p class="eyebrow">Looking out for campus</p><h1 class="page-title">{{ 'Thanks for speaking up.' if already_reported or report_submitted|default(false) else 'Something not right?' }}</h1><p class="muted">{{ 'Your report is with the admin team.' if already_reported and already_reported.status == 'pending' else 'Help keep BroncosHub clear, accurate, and welcoming.' }}</p></div></div>
+  <div class="moderation-intake-grid">
+    <div class="stack">
+      {% if already_reported or report_submitted|default(false) %}
+      <article class="card stack moderation-submitted"><span class="moderation-decision-symbol">{{ icon('check') }}</span><h2 class="section-title">{{ 'Report received.' if not already_reported or already_reported.status == 'pending' else 'Your report has been reviewed.' }}</h2><p class="muted">{% if not already_reported or already_reported.status == 'pending' %}An administrator will review the event and the details you shared. You don’t need to send another report.{% else %}An administrator has reviewed the concern you shared. Thank you for helping look out for the SCU community.{% endif %}</p>{% if already_reported %}<p class="small muted">Submitted {{ already_reported.date_label }}</p>{% endif %}<a class="button button-secondary" href="{{ '/events/' ~ event.id if can_browse else '/profile' }}">{{ 'Back to event' if can_browse else 'Back to your profile' }} {{ icon('arrow-right') }}</a></article>
+      {% else %}
+      {% if field_errors %}<div class="alert alert-error" role="alert"><strong>A couple of details need another look.</strong><ul>{% for field, message in field_errors.items() %}<li><a href="#report-{{ field }}">{{ message }}</a></li>{% endfor %}</ul></div>{% endif %}
+      <form class="card stack" action="/events/{{ event.id }}/report" method="post">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() if csrf_token is callable else csrf_token }}">
+        <div class="stack-sm"><h2 class="section-title">Tell us what’s going on.</h2><p class="muted">Share enough detail for an administrator to review the concern.</p></div>
+        <div class="field"><label for="report-reason">What’s the concern?</label><select id="report-reason" name="reason" required{% if field_errors.get('reason') %} aria-invalid="true" aria-describedby="reason-error"{% endif %}><option value="">Choose a reason</option>{% for reason in reasons %}<option value="{{ reason.value }}"{% if values.get('reason') == reason.value %} selected{% endif %}>{{ reason.label }}</option>{% endfor %}</select>{% if field_errors.get('reason') %}<p class="field-error" id="reason-error">{{ field_errors.reason }}</p>{% endif %}</div>
+        <div class="field"><label for="report-details">A little more detail</label><textarea id="report-details" name="details" rows="6" required minlength="10" maxlength="2000" placeholder="What should the admin team know about this event?" aria-describedby="report-details-help{% if field_errors.get('details') %} details-error{% endif %}"{% if field_errors.get('details') %} aria-invalid="true"{% endif %}>{{ values.get('details', '') }}</textarea><p class="small muted" id="report-details-help">10–2,000 characters. Include relevant details, without sharing sensitive personal information.</p>{% if field_errors.get('details') %}<p class="field-error" id="details-error">{{ field_errors.details }}</p>{% endif %}</div>
+        <div class="moderation-intake-note small muted">{{ icon('info') }}<p>Reporting an event sends it for review. It won’t automatically remove the event.</p></div>
+        <div class="form-actions"><a class="button button-secondary" href="{{ '/events/' ~ event.id if can_browse else '/profile' }}">Go back</a><button class="button button-primary" type="submit">Send report {{ icon('arrow-right') }}</button></div>
+      </form>
+      {% endif %}
+    </div>
+    <aside class="card moderation-intake-event"><img class="moderation-event-art" src="{{ event.cover_url|default('', true) or url_for('static', filename='images/' ~ event.art) }}" alt="" width="480" height="300"><div class="moderation-event-body stack-sm"><p class="eyebrow">The event</p><h2 class="section-title">{{ event.title }}</h2><p class="muted small">Hosted by {{ event.organizer }}</p><div class="divider"></div><p class="inline small">{{ icon('calendar') }} {{ event.date_label }}</p><p class="inline small">{{ icon('pin') }} {{ event.location }}</p></div></aside>
+  </div>
+</section>
+{% endblock %}

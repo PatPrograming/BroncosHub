@@ -1,6 +1,7 @@
 {% extends 'base.html' %}
 {% from 'components/ui.html' import icon, event_card, badge, empty_state %}
 {% block title %}{{ event.title }}{% endblock %}
+{% block page_assets %}{% if event_reporting_available|default(false) %}<link rel="stylesheet" href="{{ url_for('static', filename='css/moderation.css') }}">{% endif %}{% endblock %}
 {% block content %}
 <section class="container page-section">
   <a class="breadcrumb" href="/events">{{ icon('arrow-left') }} Back to all events</a>
@@ -17,6 +18,7 @@
         <div class="stack-sm"><span class="inline small">{{ icon('calendar') }} {{ event.date_label }}</span><span class="inline small">{{ icon('clock') }} {{ event.time_label }}</span><span class="inline small">{{ icon('pin') }} {{ event.location }}</span></div>
         {% if event.status == 'cancelled' %}<div class="alert alert-warning">This event has been cancelled. Registration is closed.</div><a class="button button-secondary" href="/events">Find another event {{ icon('arrow-right') }}</a>{% elif event.registered %}<div class="alert alert-success">{{ icon('ticket') }} You have a registration for this event.</div><a class="button button-primary" href="{% if registration is defined and registration %}/my-registrations/{{ registration.id }}{% else %}/my-registrations{% endif %}">View my registration {{ icon('ticket') }}</a>{% elif event.spots_left is defined and event.spots_left <= 0 %}<div class="alert alert-warning">This event is fully booked.</div><a class="button button-secondary" href="/events">Find another event {{ icon('arrow-right') }}</a>{% elif not user %}<a class="button button-primary" href="/login?next=/events/{{ event.id }}/register">Log in to register {{ icon('arrow-right') }}</a><p class="small muted">Use your SCU account to join this event.</p>{% else %}<a class="button button-primary" href="/events/{{ event.id }}/register">{{ 'Count me in' if event.price_cents == 0 else 'Get a ticket' }} {{ icon('arrow-up-right') }}</a><p class="small muted">You'll review the details before confirming.</p>{% endif %}
       </div><p class="small muted detail-aside-note">{{ icon('pin') }} Happening right here at SCU.</p>
+      {% if event_reporting_available|default(false) and event.status == 'published' %}<a class="event-report-link small" href="/events/{{ event.id }}/report">{{ icon('alert') }} Report this event</a>{% endif %}
     </aside>
   </div>
 </section>

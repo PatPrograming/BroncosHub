@@ -27,12 +27,15 @@
   </div></details>
 </div></aside>
 {% endif %}
+{% if organizer_demo %}
+<aside class="preview-bar" aria-label="Project demo notice"><div class="container preview-inner"><span><span class="preview-dot"></span>Project demo · Fictional database records</span><div class="inline"><a href="/demo">Organizer</a><a href="/demo/admin">Moderation</a><a href="/demo/student">Report an event</a></div></div></aside>
+{% endif %}
 <header class="site-header"><div class="container header-inner">
   <a class="brand" href="/" aria-label="BroncosHub home"><span class="brand-mark">{{ icon('horseshoe') }}</span>Broncos<span>Hub</span><span class="brand-dot">.</span></a>
   <button class="icon-button menu-toggle" aria-label="Open navigation" aria-expanded="false" aria-controls="site-navigation">{{ icon('menu') }}</button>
   <nav id="site-navigation" class="site-navigation" aria-label="Main navigation"><div class="nav-links">
     {% for key,label,path in [('home','Home','/'),('explore','Explore','/events'),('my-events','My Events','/my-registrations')] %}<a href="{{ '/login?next=/my-registrations' if key == 'my-events' and not user else path }}" class="nav-link{% if active_nav == key %} is-active{% endif %}"{% if active_nav == key %} aria-current="page"{% endif %}>{{ label }}</a>{% endfor %}
-    {% if user and user.role == 'organizer' %}<a class="nav-link{% if active_nav == 'organizer' %} is-active{% endif %}" href="/organizer/"{% if active_nav == 'organizer' %} aria-current="page"{% endif %}>Organize</a>{% endif %}
+    {% if user and user.role in ['organizer', 'admin'] %}<a class="nav-link{% if active_nav == 'organizer' %} is-active{% endif %}" href="/organizer/"{% if active_nav == 'organizer' %} aria-current="page"{% endif %}>Organize</a>{% endif %}
     {% if user and user.role == 'admin' %}<a class="nav-link{% if active_nav == 'admin' %} is-active{% endif %}" href="/admin/reports">Reports</a>{% endif %}
   </div><div class="nav-account">
     {% if user and user.role != 'guest' %}<span class="campus-label">SCU COMMUNITY</span><a href="/profile" class="profile-link" aria-label="Your profile"><span class="avatar">{{ user.first_name[0]|default('B') }}</span><span class="profile-name">{{ user.first_name|default('Bronco') }}</span></a>
