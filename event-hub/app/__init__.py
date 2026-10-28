@@ -25,12 +25,14 @@ def create_app(config_class=Config):
 
     from app import models  # noqa: F401
     from app.routes.auth import auth_bp
+    from app.routes.events import events_bp
     from app.routes.organizer import organizer_bp
     from app.routes.admin import admin_bp
     from app.routes.reporting import reporting_bp
     from app.routes.registrations import registrations_bp
 
     app.register_blueprint(auth_bp)
+    app.register_blueprint(events_bp)
     app.register_blueprint(organizer_bp)
     app.register_blueprint(admin_bp)
     app.register_blueprint(reporting_bp)
