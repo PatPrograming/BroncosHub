@@ -34,7 +34,7 @@ def test_known_reason_has_readable_label(monkeypatch):
     assert view["reason"] == "Misleading event information"
     assert view["reporter"] == "Alex Chen"
     assert view["event"] == {"id": 3, "title": "Campus concert"}
-    assert view["date_label"] == "Oct 22, 2026 · 18:05 UTC"
+    assert view["date_label"] == "Oct 22, 2026 · 11:05 PDT"
 
 
 def test_completed_review_includes_audit_details(monkeypatch):
@@ -50,7 +50,7 @@ def test_completed_review_includes_audit_details(monkeypatch):
 
     assert view["status"] == "dismissed"
     assert view["reviewed_by"] == "Jordan Admin"
-    assert view["reviewed_date_label"] == "Oct 22, 2026 · 19:10 UTC"
+    assert view["reviewed_date_label"] == "Oct 22, 2026 · 12:10 PDT"
     assert view["review_note"] == "The organizer confirmed the venue is correct."
 
 

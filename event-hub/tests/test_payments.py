@@ -102,9 +102,13 @@ def test_card_number_is_not_stored(app, client):
         registration_id = registration.id
         student_id = registration.student_id
     sign_in(client, student_id)
+    checkout_url = f"/registrations/{registration_id}/checkout"
+    assert client.get(checkout_url).status_code == 200
+    with client.session_transaction() as session:
+        csrf_token = session["moderation_csrf"]["token"]
     response = client.post(
-        f"/registrations/{registration_id}/checkout",
-        data={"card_number": CARD},
+        checkout_url,
+        data={"card_number": CARD, "csrf_token": csrf_token},
         follow_redirects=True,
     )
     assert response.status_code == 200

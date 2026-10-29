@@ -1,6 +1,7 @@
 """Saved event reports and the admin decision, kept for review history."""
 
 from datetime import datetime, timezone
+from zoneinfo import ZoneInfo
 
 from app.extensions import db
 
@@ -41,7 +42,13 @@ class Report(db.Model):
 
     def report_view(self):
         def date_label(value):
-            return value.strftime("%b %d, %Y · %H:%M UTC") if value else None
+            # Report timestamps are stored as naive UTC; convert only for display.
+            return (
+                value.replace(tzinfo=timezone.utc)
+                .astimezone(ZoneInfo("America/Los_Angeles"))
+                .strftime("%b %d, %Y · %H:%M %Z")
+                if value else None
+            )
 
         return {
             "id": self.id,

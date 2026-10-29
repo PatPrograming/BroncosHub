@@ -4,10 +4,11 @@ from sqlalchemy.exc import IntegrityError
 
 from app.extensions import db
 from app.models import Registration
+from app.services.event_service import campus_now
 
 
 class RegistrationRefused(Exception):
-    """The event is cancelled or full, so a new registration isn't allowed."""
+    """The event is closed or full, so a new registration isn't allowed."""
 
 
 class CancellationNotAllowed(Exception):
@@ -31,6 +32,8 @@ def register_student(student, event):
 
     if event.is_cancelled:
         raise RegistrationRefused("This event has been cancelled. Registration is closed.")
+    if event.end_time <= campus_now():
+        raise RegistrationRefused("This event has ended. Registration is closed.")
     spots = event.spots_left()
     if spots is not None and spots <= 0:
         raise RegistrationRefused("This event is fully booked.")

@@ -4,7 +4,9 @@ import secrets
 
 from app.extensions import db
 from app.models.payment import Payment
+from app.models.registration import Registration
 from app.models.ticket import Ticket
+from app.services.event_service import campus_now
 
 
 class CheckoutNotAllowed(Exception):
@@ -13,6 +15,30 @@ class CheckoutNotAllowed(Exception):
 
 class UnrecognizedCard(Exception):
     """Card number is not one of the mock test prefixes."""
+
+
+def checkout_unavailable_reason(registration):
+    """Explain a closed unpaid checkout; already completed purchases stay readable."""
+    if registration.payment is not None and registration.payment.status == "succeeded":
+        return None
+    event = registration.event
+    if event.is_free:
+        return "This event is free. No payment is needed."
+    if event.is_cancelled or registration.status == "cancelled":
+        return "This event or registration has been cancelled. Checkout is closed."
+    if event.end_time <= campus_now():
+        return "This event has ended. Checkout is closed. No payment was taken."
+    if event.capacity is not None:
+        # Read persisted confirmations instead of a possibly cached relationship.
+        # Pending checkouts do not reserve seats. Recheck immediately before charge.
+        confirmed = db.session.scalar(
+            db.select(db.func.count()).select_from(Registration).where(
+                Registration.event_id == event.id, Registration.status == "confirmed"
+            )
+        )
+        if confirmed >= event.capacity:
+            return "This event is fully booked. Checkout is closed. No payment was taken."
+    return None
 
 
 class MockPaymentService:
@@ -37,11 +63,12 @@ class MockPaymentService:
 
 def complete_purchase(registration, card_number, service=None):
     """Save exactly one payment. A ticket is issued only after success."""
-    event = registration.event
-    if event.is_free or event.is_cancelled or registration.status == "cancelled":
-        raise CheckoutNotAllowed
     if registration.payment is not None and registration.payment.status == "succeeded":
         return registration
+    reason = checkout_unavailable_reason(registration)
+    if reason:
+        raise CheckoutNotAllowed(reason)
+    event = registration.event
 
     service = service or MockPaymentService()
     result = service.charge(event.price_cents, card_number)

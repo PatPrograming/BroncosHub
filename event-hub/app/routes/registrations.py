@@ -8,9 +8,11 @@ from app.extensions import db
 from app.models import Registration
 from app.models.event import Event
 from app.security import csrf_token, validate_csrf
+from app.services.event_service import campus_now
 from app.services.payment_service import (
     CheckoutNotAllowed,
     UnrecognizedCard,
+    checkout_unavailable_reason,
     complete_purchase,
 )
 from app.services.registration_service import (
@@ -69,6 +71,7 @@ def register(event_id):
         return redirect(url_for("registrations.detail", registration_id=registration.id))
 
     view = event.event_view()
+    view["ended"] = event.end_time <= campus_now()
     existing = find_registration(current_user, event)
     view["registered"] = existing is not None and existing.status != "cancelled"
     return render_template("registrations/confirm.html", event=view, active_nav="explore")
@@ -116,6 +119,7 @@ def checkout(registration_id):
     registration = _owned_registration(registration_id)
     view = registration.registration_view()
     if request.method == "POST":
+        validate_csrf()
         already_paid = (
             registration.payment is not None and registration.payment.status == "succeeded"
         )
@@ -130,17 +134,19 @@ def checkout(registration_id):
                 errors={"card_number": "Use a test card starting with 4242, 4000, or 4999."},
                 active_nav="my-events",
             ), 422
-        except CheckoutNotAllowed:
+        except CheckoutNotAllowed as refusal:
             return render_template(
                 "registrations/checkout.html",
                 registration=view,
+                checkout_closed_message=str(refusal),
                 errors={},
                 active_nav="my-events",
-            )
+            ), 409
         return redirect(url_for("registrations.detail", registration_id=registration.id))
     return render_template(
         "registrations/checkout.html",
         registration=view,
+        checkout_closed_message=checkout_unavailable_reason(registration),
         errors={},
         active_nav="my-events",
     )
@@ -153,5 +159,6 @@ def detail(registration_id):
     return render_template(
         "registrations/detail.html",
         registration=registration.registration_view(),
+        checkout_closed_message=checkout_unavailable_reason(registration),
         active_nav="my-events",
     )

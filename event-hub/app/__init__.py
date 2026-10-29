@@ -25,7 +25,8 @@ def create_app(config_class=Config):
 
     from app import models  # noqa: F401
     from app.routes.auth import auth_bp
-    from app.routes.events import events_bp
+    from app.routes.events import _upcoming_events, events_bp
+    from app.services.event_service import CATEGORIES
     from app.routes.organizer import organizer_bp
     from app.routes.admin import admin_bp
     from app.routes.reporting import reporting_bp
@@ -45,10 +46,11 @@ def create_app(config_class=Config):
 
     @app.route("/")
     def home():
+        events = db.session.scalars(_upcoming_events().limit(3)).all()
         return render_template(
             "index.html",
-            events=[],
-            categories=[],
+            events=[event.event_view() for event in events],
+            categories=CATEGORIES,
             active_nav="home",
         )
 

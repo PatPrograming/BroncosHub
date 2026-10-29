@@ -7,3 +7,5 @@ Authlib>=1.3.2
 requests>=2.32.0
 python-dotenv>=1.0.1
 pytest>=8.3.3
+# IANA timezone data for Pacific-time display, including systems without it.
+tzdata>=2024.1

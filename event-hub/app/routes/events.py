@@ -20,7 +20,7 @@ def _upcoming_events():
     # Published events that haven't ended yet, soonest first.
     return (
         db.select(Event)
-        .where(Event.status == "published", Event.end_time >= campus_now())
+        .where(Event.status == "published", Event.end_time > campus_now())
         .options(joinedload(Event.organizer), selectinload(Event.registrations))
         .order_by(Event.start_time, Event.id)
     )
@@ -83,6 +83,7 @@ def detail(event_id):
         abort(404)
 
     view = event.event_view()
+    view["ended"] = event.end_time <= campus_now()
     registration = None
     if current_user.is_authenticated:
         registration = find_registration(current_user, event)

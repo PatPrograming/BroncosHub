@@ -1,7 +1,6 @@
 """Owner-only organizer dashboard, statistics, and event create/edit/cancel."""
 
 from functools import wraps
-from datetime import datetime, timezone
 
 from flask import Blueprint, abort, flash, redirect, render_template, request, url_for
 from flask_login import current_user, login_required
@@ -11,7 +10,7 @@ from sqlalchemy.orm import joinedload, selectinload
 from app.extensions import db
 from app.models import Event
 from app.security import csrf_token, validate_csrf
-from app.services.event_service import CATEGORIES, validate_event_form
+from app.services.event_service import CATEGORIES, campus_now, validate_event_form
 from app.services.stats_service import dashboard_statistics, event_statistics
 
 
@@ -59,7 +58,7 @@ def _page_context():
 @organizer_bp.get("/")
 @organizer_required
 def dashboard():
-    now = datetime.now(timezone.utc).replace(tzinfo=None)
+    now = campus_now()
     upcoming = and_(Event.status == "published", Event.end_time >= now)
     events = db.session.scalars(
         _owned_events().order_by(
