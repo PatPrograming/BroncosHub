@@ -19,7 +19,7 @@ reporting_bp = Blueprint("reporting", __name__)
 
 @reporting_bp.context_processor
 def reporting_context():
-    return {"csrf_token": csrf_token, "active_nav": "explore", "event_browsing_available": False}
+    return {"csrf_token": csrf_token, "active_nav": "explore", "event_browsing_available": True}
 
 
 def _existing_report(event_id):
@@ -44,7 +44,7 @@ def report_event(event_id):
         abort(403, description="You can't report your own event.")
     existing = _existing_report(event_id)
     if existing and request.method == "POST":
-        flash("Your report is already saved. You only need to report an event once.", "info")
+        flash("You've already reported this event.", "info")
         return redirect(url_for("reporting.report_event", event_id=event_id))
     if not existing and event.status != "published":
         abort(409)
@@ -75,13 +75,13 @@ def report_event(event_id):
                 db.session.rollback()
                 if _existing_report(event_id) is None:
                     raise
-            flash("Your report has been sent to the admin review queue.", "success")
+            flash("Report submitted for review.", "success")
             return redirect(url_for("reporting.report_event", event_id=event_id))
     # Reporter confirmation deliberately excludes private admin review notes.
     own_report = {"id": existing.id, "status": existing.status,
-                  "date_label": existing.created_at.strftime("%b %d, %Y · %H:%M UTC")} if existing else None
+                  "date_label": existing.report_view()["date_label"]} if existing else None
     return render_template(
-        "events/report.html", event=event.event_view(),
+        "events/report.html", event=event.attendee_event_view(),
         reasons=[{"value": value, "label": label} for value, label in REPORT_REASONS],
         errors=errors, form_values=form_values, existing_report=own_report,
         report_submitted=bool(existing),
@@ -94,9 +94,9 @@ def report_event(event_id):
 @reporting_bp.errorhandler(409)
 def reporting_error(error):
     titles = {400: "Please try again", 403: "Report unavailable", 404: "Event not found",
-              409: "This event is already closed"}
+              409: "Event closed"}
     messages = {400: error.description, 403: "You can't report your own event or use this account to submit a report.",
-                404: "This event isn't available.", 409: "Cancelled events don't accept new reports."}
+                404: "This event isn't available.", 409: "Closed events don't accept new reports."}
     return render_template("errors/error.html", status=error.code, title=titles[error.code],
                            message=messages[error.code], return_url=url_for("auth.profile"),
                            return_label="Go to profile"), error.code

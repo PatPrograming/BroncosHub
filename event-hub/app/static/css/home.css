@@ -1,0 +1,79 @@
+/* Home is a daily overview; event search and the full calendar live in Explore. */
+.home-dashboard { padding-block:48px 72px; }
+.home-heading { display:flex; align-items:center; justify-content:space-between; gap:24px; margin-bottom:36px; }
+.home-heading p { margin-top:10px; font-size:1.125rem; }
+.home-heading-actions { display:flex; align-items:center; gap:24px; flex-wrap:wrap; }
+.home-overview { display:grid; grid-template-columns:minmax(0,1.6fr) minmax(0,1fr); gap:28px; align-items:start; }
+.home-today,.home-personal { min-width:0; overflow:hidden; padding:0; }
+.home-panel-heading { display:flex; align-items:center; justify-content:space-between; gap:16px; padding:26px 28px; border-bottom:1px solid var(--line); }
+.home-panel-heading h2 { font-family:var(--serif); font-size:1.75rem; letter-spacing:-.025em; }
+.home-panel-heading>span { flex-shrink:0; font-size:1rem; }
+.home-agenda { list-style:none; margin:0; padding:0 28px; }
+.home-agenda li+li { border-top:1px solid var(--line); }
+.home-agenda-event { display:flex; align-items:center; gap:20px; padding:26px 0; border-radius:6px; }
+.home-agenda-art { width:88px; height:96px; object-fit:cover; border-radius:10px; flex-shrink:0; }
+.home-agenda-copy { flex:1; min-width:0; }
+.home-agenda-time { display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:6px; color:var(--muted); font-size:.9375rem; }
+.home-live { display:inline-flex; align-items:center; gap:6px; color:var(--green); font-weight:650; }
+.home-live:before { content:''; width:7px; height:7px; border-radius:50%; background:currentColor; }
+.home-agenda-copy h3,.home-upcoming-event h3 { font-size:1.1875rem; line-height:1.35; overflow-wrap:anywhere; }
+.home-agenda-copy p,.home-upcoming-event .muted { margin-top:6px; font-size:1rem; overflow-wrap:anywhere; }
+.home-agenda-arrow { display:flex; color:var(--red); flex-shrink:0; transition:transform .18s; }
+.home-agenda-event:hover h3,.home-upcoming-event:hover h3 { color:var(--red); }
+.home-agenda-event:hover .home-agenda-arrow,.home-upcoming-event:hover .home-agenda-arrow { transform:translate(2px,-2px); }
+.home-panel-link { display:flex; justify-content:space-between; gap:12px; margin:0 28px; padding:20px 0; border-top:1px solid var(--line); }
+.home-ticket-icon { color:var(--red); display:flex; }
+.home-ticket-icon .icon { width:25px; height:25px; }
+.home-booking { padding:24px 28px; }
+.home-booking-art { width:100%; aspect-ratio:1.9; object-fit:cover; border-radius:10px; }
+.home-booking-copy { padding-top:20px; }
+.home-booking-date,.home-upcoming-date { color:var(--red); font-weight:600; font-size:1rem; }
+.home-booking h3 { font-size:1.4rem; line-height:1.3; margin:8px 0 18px; overflow-wrap:anywhere; }
+.home-booking-detail { display:flex; align-items:flex-start; gap:9px; color:var(--muted); font-size:1rem; overflow-wrap:anywhere; }
+.home-booking-detail .icon { flex-shrink:0; margin-top:3px; }
+.home-booking-detail+.home-booking-detail { margin-top:8px; }
+.home-booking .button { display:flex; justify-content:space-between; margin-top:24px; }
+.home-personal-empty { padding:36px 28px; background:linear-gradient(140deg,var(--surface),#f6ece7); }
+.home-personal-empty h3 { font-size:1.25rem; line-height:1.4; max-width:28ch; }
+.home-personal-empty p { margin-top:12px; }
+.home-personal-empty .button { margin-top:24px; }
+.home-quiet { padding:40px 28px; }
+.home-empty-icon { display:inline-flex; color:var(--green); background:var(--green-soft); border-radius:12px; padding:13px; margin-bottom:20px; }
+.home-empty-icon .icon { width:25px; height:25px; }
+.home-quiet h3 { font-size:1.25rem; }
+.home-quiet p { margin-top:10px; }
+.home-upcoming-event { display:flex; gap:18px; align-items:center; margin:0 28px 28px; padding-top:24px; border-top:1px solid var(--line); }
+.home-upcoming-event>img { width:80px; height:96px; object-fit:cover; border-radius:10px; flex-shrink:0; }
+.home-upcoming-event>div { min-width:0; flex:1; }
+.home-upcoming-event h3 { margin-top:7px; }
+@media(max-width:1050px) {
+  .home-overview { grid-template-columns:minmax(0,1.3fr) minmax(0,1fr); gap:20px; }
+  .home-heading-actions { gap:14px; justify-content:flex-end; }
+  .home-panel-heading,.home-booking,.home-personal-empty { padding-inline:22px; }
+  .home-agenda { padding-inline:22px; }
+  .home-agenda-art { width:72px; height:88px; }
+  .home-agenda-event { gap:14px; }
+}
+@media(max-width:760px) {
+  .home-dashboard { padding-block:30px 48px; }
+  .home-heading { align-items:flex-start; flex-direction:column; gap:20px; margin-bottom:26px; }
+  .home-heading-actions { flex-direction:row-reverse; justify-content:flex-end; }
+  .home-overview { grid-template-columns:1fr; gap:24px; }
+  .home-panel-heading { padding:22px 20px; }
+  .home-panel-heading h2 { font-size:1.6rem; }
+  .home-panel-heading>span { font-size:.9375rem; }
+  .home-agenda { padding-inline:20px; }
+  .home-agenda-art { width:64px; height:80px; }
+  .home-agenda-event { padding-block:22px; }
+  .home-agenda-copy h3 { font-size:1.125rem; }
+  .home-agenda-arrow { display:none; }
+  .home-booking { padding:20px; }
+  .home-booking-art { aspect-ratio:2.1; }
+  .home-quiet,.home-personal-empty { padding:30px 20px; }
+  .home-panel-link { margin-inline:20px; }
+  .home-upcoming-event { margin-inline:20px; gap:14px; }
+  .home-upcoming-event>img { width:64px; height:80px; }
+}
+@media(prefers-reduced-motion:reduce) {
+  .home-agenda-arrow { transition:none; }
+}

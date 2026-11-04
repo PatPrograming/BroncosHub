@@ -2,9 +2,9 @@
 set -e
 cd -- "${0:A:h}/event-hub"
 if [[ ! -x .venv/bin/python ]]; then
-  python3 -m venv .venv
+  python3.12 -m venv .venv
 fi
-if ! .venv/bin/python -c 'from importlib.metadata import version; assert tuple(map(int, version("Flask").split(".")[:3])) >= (3, 1, 3); assert tuple(map(int, version("Pillow").split(".")[:2])) >= (11, 3)' >/dev/null 2>&1; then
+if ! .venv/bin/python -c 'from importlib.metadata import version; assert tuple(map(int, version("Flask").split(".")[:3])) >= (3, 1, 3); assert tuple(map(int, version("Pillow").split(".")[:2])) >= (13, 0)' >/dev/null 2>&1; then
   .venv/bin/python -m pip install -r tools/requirements-preview.txt
 fi
 if .venv/bin/python - <<'PY'

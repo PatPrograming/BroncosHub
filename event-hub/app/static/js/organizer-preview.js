@@ -40,10 +40,10 @@
     // datetime-local carries the event's Pacific wall-clock time. Keep those
     // entered fields intact even when the browser is in another time zone.
     const match = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})$/.exec(value);
-    if (!match) return 'Date & time to come';
+    if (!match) return 'Date and time';
     const [, year, month, day, hour, minute] = match.map(Number);
     const date = new Date(Date.UTC(year, month - 1, day, hour, minute));
-    if (Number.isNaN(date.getTime())) return 'Date & time to come';
+    if (Number.isNaN(date.getTime())) return 'Date and time';
     return new Intl.DateTimeFormat('en-US', {
       weekday: 'short', month: 'short', day: 'numeric',
       hour: 'numeric', minute: '2-digit', timeZone: 'UTC',
@@ -51,19 +51,19 @@
   }
 
   function refreshPreview() {
-    setPreview('title', fieldValue('title') || 'Something good is coming.');
-    setPreview('category', fieldValue('category') || 'Your category');
-    setPreview('location', fieldValue('location') || 'Your spot on campus');
+    setPreview('title', fieldValue('title') || 'Event name');
+    setPreview('category', fieldValue('category') || 'Category');
+    setPreview('location', fieldValue('location') || 'Location');
     setPreview('date', scheduleLabel(fieldValue('start_time')));
     const enteredPrice = fieldValue('price');
     const price = Number(enteredPrice);
     setPreview('price', enteredPrice === '' || !Number.isFinite(price) || price < 0
-      ? 'Price to come'
+      ? 'Price'
       : price === 0 ? 'Free'
       : new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(price));
 
     const dirty = form.dataset.dirtyOnLoad === 'true' || removeValue?.value === '1' || originalValues.some(([name, value]) => form.elements.namedItem(name)?.value !== value);
-    const stateText = dirty ? 'Unsaved changes' : state?.dataset.cleanLabel || 'Ready when you are';
+    const stateText = dirty ? 'Unsaved changes' : state?.dataset.cleanLabel || 'Not published yet';
     if (state && state.textContent !== stateText) state.textContent = stateText;
     if (state) state.dataset.dirty = String(dirty);
   }
@@ -84,7 +84,7 @@
       removeButton.querySelector('[data-cover-remove-label]').textContent = !coverError.hidden && !objectUrl
         ? storedCover ? 'Keep current cover' : 'Use default cover' : 'Remove image';
       coverName.textContent = objectUrl ? coverInput.files[0]?.name || 'Selected image'
-        : storedCover ? savedCoverName : 'No image selected. We’ll use a campus cover.';
+        : storedCover ? savedCoverName : 'Default cover selected.';
     }
     if (animate && !reducedMotion.matches && card) {
       card.classList.remove('is-category-changing');

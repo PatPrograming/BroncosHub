@@ -1,22 +1,9 @@
-# EventHub
-Patrick Jaden Ethan CSEN 174
+# BroncosHub
 
-## Open the login page
+Campus events for SCU students. Built by Jaden Hill, Patrick Zhang, and Ethan Can for CSEN 174.
 
-From this folder:
+The app lives in [`event-hub/`](event-hub). Follow the [setup and testing instructions](event-hub/README.md) to run it with Python 3.12+ at **http://127.0.0.1:5080**. Keep your existing `.env` settings when updating.
 
-```bash
-cd event-hub
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
-cp .env.example .env
-```
+Every verified SCU user can host and manage their own events. Admin moderation is separate, and paid events require Stripe setup. Google sign-in credentials, Stripe verification, and public hosting still need configuration; see the [deployment guide](event-hub/docs/deployment.md).
 
-Fill in `event-hub/.env`: any long random `SECRET_KEY`, plus the Google web client's `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET`. Keep `ALLOWED_EMAIL_DOMAIN=scu.edu`. The Google redirect URI is `http://127.0.0.1:5000/auth/google/callback`.
-
-```bash
-python run.py
-```
-
-Leave that Terminal window open, then go to **http://127.0.0.1:5000/login** and choose **Continue with Google**. Press Control+C to stop the server.
+For the local app and fictional-data previews, see [START HERE](START%20HERE.md).

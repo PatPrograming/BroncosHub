@@ -4,8 +4,8 @@
 <head>
   <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#9d2337">
-  <meta name="description" content="Your campus. Your people. Discover events and make plans at Santa Clara University with BroncosHub.">
-  <title>{% block title %}Your campus, happening{% endblock %} · BroncosHub</title>
+  <meta name="description" content="Browse events and register with your SCU account on BroncosHub.">
+  <title>{% block title %}Events at SCU{% endblock %} · BroncosHub</title>
   <link rel="icon" href="{{ url_for('static', filename='images/favicon.svg') }}" type="image/svg+xml">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/campus-week.css') }}">
@@ -34,19 +34,19 @@
   <a class="brand" href="/" aria-label="BroncosHub home"><span class="brand-mark">{{ icon('horseshoe') }}</span>Broncos<span>Hub</span><span class="brand-dot">.</span></a>
   <button class="icon-button menu-toggle" aria-label="Open navigation" aria-expanded="false" aria-controls="site-navigation">{{ icon('menu') }}</button>
   <nav id="site-navigation" class="site-navigation" aria-label="Main navigation"><div class="nav-links">
-    {% for key,label,path in [('home','Home','/'),('explore','Explore','/events'),('my-events','My Events','/my-registrations')] %}<a href="{{ '/login?next=/my-registrations' if key == 'my-events' and not user else path }}" class="nav-link{% if active_nav == key %} is-active{% endif %}"{% if active_nav == key %} aria-current="page"{% endif %}>{{ label }}</a>{% endfor %}
-    {% if user and user.role in ['organizer', 'admin'] %}<a class="nav-link{% if active_nav == 'organizer' %} is-active{% endif %}" href="/organizer/"{% if active_nav == 'organizer' %} aria-current="page"{% endif %}>Organize</a>{% endif %}
+    {% for key,label,path in [('home','Home','/'),('explore','Explore','/events'),('my-events','My events','/my-registrations')] %}<a href="{{ '/login?next=/my-registrations' if key == 'my-events' and not user else path }}" class="nav-link{% if active_nav == key %} is-active{% endif %}"{% if active_nav == key %} aria-current="page"{% endif %}>{{ label }}</a>{% endfor %}
+    {% if user and user.can_organize %}<a class="nav-link{% if active_nav == 'organizer' %} is-active{% endif %}" href="/organizer/"{% if active_nav == 'organizer' %} aria-current="page"{% endif %}>Organize</a>{% endif %}
     {% if user and user.role == 'admin' %}<a class="nav-link{% if active_nav == 'admin' %} is-active{% endif %}" href="/admin/reports">Reports</a>{% endif %}
   </div><div class="nav-account">
-    {% if user and user.role != 'guest' %}<span class="campus-label">SCU COMMUNITY</span><a href="/profile" class="profile-link" aria-label="Your profile"><span class="avatar">{{ user.first_name[0]|default('B') }}</span><span class="profile-name">{{ user.first_name|default('Bronco') }}</span></a>
-    {% else %}<a href="/login" class="nav-link">Log in</a><a href="/signup" class="button button-primary button-small">Join the herd {{ icon('arrow-up-right') }}</a>{% endif %}
+    {% if user and user.role != 'guest' %}<a href="/profile" class="profile-link" aria-label="Your profile"><span class="avatar">{{ user.first_name[0]|default('B') }}</span><span class="profile-name">{{ user.first_name|default('Bronco') }}</span></a>
+    {% else %}<a href="/login" class="nav-link">Log in</a><a href="/signup" class="button button-primary button-small">Sign up {{ icon('arrow-up-right') }}</a>{% endif %}
   </div></nav>
 </div></header>
 <main id="main-content" tabindex="-1">
   {% with messages = get_flashed_messages(with_categories=true) %}{% if messages %}<div class="container flash-messages" aria-live="polite">{% for category,message in messages %}<div class="alert alert-{{ category }}">{{ icon('info') }}<span>{{ message }}</span></div>{% endfor %}</div>{% endif %}{% endwith %}
   {% block content %}{% endblock %}
 </main>
-<footer class="site-footer"><div class="container footer-inner"><a class="brand footer-brand" href="/">BroncosHub<span class="brand-dot">.</span></a><p>Your campus. Your people. Your next plan.</p><span class="footer-campus">Made for the SCU community {{ icon('horseshoe') }}</span></div></footer>
+<footer class="site-footer"><div class="container footer-inner"><a class="brand footer-brand" href="/">BroncosHub<span class="brand-dot">.</span></a></div></footer>
 <dialog id="confirm-dialog" class="confirm-dialog" aria-labelledby="confirm-title" aria-describedby="confirm-message">
   <button type="button" class="icon-button dialog-close" data-dialog-close aria-label="Close confirmation">{{ icon('x') }}</button>
   <span class="dialog-symbol">{{ icon('alert') }}</span><h2 id="confirm-title" class="section-title">Are you sure?</h2><p id="confirm-message" class="muted"></p>

@@ -8,7 +8,7 @@ import pytest
 from flask import template_rendered
 
 from app.extensions import db
-from app.models import Event, Registration, User
+from app.models import Event, Payment, Registration, User
 from app.services.stats_service import dashboard_statistics, event_statistics
 
 
@@ -67,6 +67,18 @@ def sign_in(client, user_id):
         session["_fresh"] = True
 
 
+def record_payment(registration, amount_cents, status="succeeded"):
+    payment = Payment(
+        registration=registration,
+        amount_cents=amount_cents,
+        status=status,
+        provider_reference=f"stats-test-{registration.id}",
+    )
+    db.session.add(payment)
+    db.session.flush()
+    return payment
+
+
 class Links(HTMLParser):
     def __init__(self, html):
         super().__init__()
@@ -85,7 +97,7 @@ def snapshot():
             tuple(getattr(row, column.name) for column in model.__table__.columns)
             for row in db.session.scalars(db.select(model).order_by(model.id))
         ]
-        for model in (User, Event, Registration)
+        for model in (User, Event, Registration, Payment)
     }
 
 
@@ -99,9 +111,9 @@ def test_empty_statistics_have_zero_counts_and_no_fabricated_revenue(app, record
         assert all(row["count"] == row["percent"] == 0 for row in statistics["year_breakdown"])
         for result in (statistics, dashboard_statistics([])):
             assert result["registrations"] == 0
-            assert result["revenue_cents"] is None
-            assert result["revenue_available"] is False
-            assert result["revenue_label"] == "—"
+            assert result["revenue_cents"] == 0
+            assert result["revenue_available"] is True
+            assert result["revenue_label"] == "$0.00"
         assert dashboard_statistics([])["events_count"] == 0
 
 
@@ -121,8 +133,65 @@ def test_only_confirmed_registrations_contribute_to_counts_and_years(app, record
         assert years["First year"]["percent"] == pytest.approx(50)
         assert years["Graduate"]["count"] == 0
         assert sum(row["count"] for row in years.values()) == 2
-        assert statistics["revenue_cents"] is None
-        assert statistics["revenue_available"] is False
+        assert statistics["revenue_cents"] == 0
+        assert statistics["revenue_available"] is True
+
+
+def test_event_revenue_uses_successful_payment_amounts_only(app, records):
+    user, event, register = records
+    with app.app_context():
+        item = event(user(role="organizer"), price_cents=9999)
+        record_payment(register(item), 1250)
+        record_payment(register(item), 2675)
+        register(item)  # A confirmed signup by itself is not payment proof.
+        record_payment(register(item, status="pending"), 8000, status="pending")
+        record_payment(register(item, status="pending"), 9000, status="declined")
+        db.session.commit()
+
+        statistics = event_statistics(item)
+        assert statistics["registrations"] == 3
+        assert statistics["revenue_available"] is True
+        assert statistics["revenue_cents"] == 3925
+        assert statistics["revenue_label"] == "$39.25"
+
+
+def test_dashboard_revenue_sums_only_supplied_events(app, records):
+    user, event, register = records
+    with app.app_context():
+        owner = user(role="organizer")
+        first = event(owner)
+        second = event(owner)
+        another_owners_event = event(user(role="organizer"))
+        record_payment(register(first), 123450)
+        record_payment(register(second), 2675)
+        record_payment(register(another_owners_event), 999999)
+        db.session.commit()
+
+        statistics = dashboard_statistics([first, second])
+        assert statistics["revenue_cents"] == 126125
+        assert statistics["revenue_label"] == "$1,261.25"
+        assert event_statistics(first)["revenue_cents"] == 123450
+        assert event_statistics(second)["revenue_cents"] == 2675
+        assert dashboard_statistics([])["revenue_cents"] == 0
+
+
+def test_successful_payment_history_survives_cancellation_and_price_changes(app, records):
+    user, event, register = records
+    with app.app_context():
+        item = event(user(role="organizer"), price_cents=1075)
+        signup = register(item)
+        record_payment(signup, 1075)
+        db.session.commit()
+
+        item.price_cents = 2250
+        item.status = "cancelled"
+        signup.status = "cancelled"
+        db.session.commit()
+
+        for statistics in (event_statistics(item), dashboard_statistics([item])):
+            assert statistics["registrations"] == 0
+            assert statistics["revenue_cents"] == 1075
+            assert statistics["revenue_label"] == "$10.75"
 
 
 def test_year_breakdown_includes_every_year_and_groups_missing_values(app, records):
@@ -158,8 +227,8 @@ def test_dashboard_counts_registrations_not_unique_students_and_keeps_history(ap
         statistics = dashboard_statistics([upcoming, past, cancelled])
         assert statistics["registrations"] == 3
         assert statistics["events_count"] == 2
-        assert statistics["revenue_cents"] is None
-        assert statistics["revenue_available"] is False
+        assert statistics["revenue_cents"] == 0
+        assert statistics["revenue_available"] is True
 
 
 @pytest.mark.parametrize("path", ["/organizer/", "/organizer/events/1/stats"])
@@ -169,27 +238,32 @@ def test_guests_are_sent_to_login(client, path):
     assert "/login" in response.location
 
 
-@pytest.mark.parametrize("path", ["/organizer/?role=organizer", "/organizer/events/1/stats?role=admin"])
-def test_students_cannot_use_role_query_parameters_to_access_statistics(app, client, records, path):
-    user, _, _ = records
+def test_role_query_parameters_cannot_expose_another_students_statistics(app, client, records):
+    user, event, _ = records
     with app.app_context():
         student = user()
+        private = event(user(), title="Another student's private statistics")
         db.session.commit()
-        student_id = student.id
+        student_id, private_id = student.id, private.id
     sign_in(client, student_id)
-    assert client.get(path).status_code == 403
+    dashboard = client.get("/organizer/?role=organizer")
+    assert dashboard.status_code == 200
+    assert b"Another student" not in dashboard.data
+    assert client.get(f"/organizer/events/{private_id}/stats?role=admin").status_code == 404
+    with app.app_context():
+        assert db.session.get(User, student_id).role == "student"
 
 
-@pytest.mark.parametrize("role", ["organizer", "admin"])
+@pytest.mark.parametrize("role", ["student", "organizer", "admin"])
 def test_dashboard_and_statistics_only_expose_owned_events(app, client, records, role):
     user, event, register = records
     with app.app_context():
         owner = user(role=role)
         owned = event(owner, title="My campus gathering")
         private = event(user(role="organizer"), title="Another organizers private event")
-        register(owned)
-        register(private)
-        register(private)
+        record_payment(register(owned), 1200)
+        record_payment(register(private), 5000)
+        record_payment(register(private), 7500)
         db.session.commit()
         owner_id, owned_id, private_id = owner.id, owned.id, private.id
     sign_in(client, owner_id)
@@ -205,10 +279,12 @@ def test_dashboard_and_statistics_only_expose_owned_events(app, client, records,
     assert b"Another organizers private event" not in dashboard.data
     assert rendered[-1]["stats"]["registrations"] == 1
     assert rendered[-1]["stats"]["events_count"] == 1
+    assert rendered[-1]["stats"]["revenue_cents"] == 1200
     with template_rendered.connected_to(record_context, app):
         statistics = client.get(f"/organizer/events/{owned_id}/stats")
     assert statistics.status_code == 200
     assert rendered[-1]["stats"]["registrations"] == 1
+    assert rendered[-1]["stats"]["revenue_cents"] == 1200
     forbidden = client.get(f"/organizer/events/{private_id}/stats")
     assert forbidden.status_code == 404
     assert b"Another organizers private event" not in forbidden.data
@@ -282,7 +358,7 @@ def test_reading_dashboard_and_statistics_does_not_modify_saved_data(app, client
     with app.app_context():
         owner = user(role="organizer")
         item = event(owner, status="cancelled", price_cents=1200)
-        register(item, year="fourth_year")
+        record_payment(register(item, year="fourth_year"), 1200)
         register(item, status="pending", year="graduate")
         db.session.commit()
         owner_id, event_id = owner.id, item.id

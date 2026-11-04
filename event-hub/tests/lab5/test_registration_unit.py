@@ -1,5 +1,7 @@
 """Five direct Registration view tests, without routes or database writes."""
 
+from datetime import datetime
+
 from app.models import Event, Payment, Registration, Ticket
 
 
@@ -9,7 +11,7 @@ def make_registration(monkeypatch, *, price_cents=1500, status="confirmed"):
     return Registration(
         id=7,
         status=status,
-        event=Event(id=3, price_cents=price_cents, status="published"),
+        event=Event(id=3, price_cents=price_cents, status="published", end_time=datetime(2099, 1, 1)),
     )
 
 

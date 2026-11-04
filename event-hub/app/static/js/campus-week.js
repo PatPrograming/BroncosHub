@@ -66,7 +66,9 @@
         if (incoming.hasAttribute(name)) link.setAttribute(name, incoming.getAttribute(name));
         else link.removeAttribute(name);
       }
-      link.querySelector('.campus-day-count').textContent = incoming.querySelector('.campus-day-count').textContent;
+      const count = link.querySelector('.campus-day-count');
+      const incomingCount = incoming.querySelector('.campus-day-count');
+      if (count && incomingCount) count.textContent = incomingCount.textContent;
     });
     const nextForm = nextDocument.querySelector('#campus-filters');
     for (const name of ['q', 'category', 'location', 'calendar']) {
@@ -106,7 +108,7 @@
     const signal = controller.signal;
     transition?.skipTransition();
     results.setAttribute('aria-busy', 'true');
-    if (status) status.textContent = 'Finding campus plans…';
+    if (status) status.textContent = 'Loading events…';
     try {
       const response = await fetch(target.href, {signal, credentials: 'same-origin', headers: {'Accept': 'text/html'}});
       if (!response.ok || response.redirected) throw new Error('Use normal page navigation.');

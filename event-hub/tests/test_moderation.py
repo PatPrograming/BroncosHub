@@ -374,6 +374,67 @@ def test_database_prevents_duplicate_reports_per_person_and_event(app, moderatio
         assert db.session.scalar(db.select(db.func.count(Report.id))) == 1
 
 
+def test_report_form_and_confirmation_link_back_to_the_real_event(
+    app, client, moderation_records,
+):
+    with app.app_context():
+        student, item = moderation_records.user(), moderation_records.event()
+        db.session.commit()
+        student_id, event_id = student.id, item.id
+    sign_in(client, student_id)
+    path = f"/events/{event_id}/report"
+    form = client.get(path)
+    assert form.status_code == 200
+    assert f'href="/events/{event_id}"' in form.get_data(as_text=True)
+    assert b"Back to event" in form.data
+    token = HiddenFields(form.get_data(as_text=True)).fields["csrf_token"]
+    confirmation = client.post(path, data={
+        "csrf_token": token, "reason": "misleading",
+        "details": "The event venue does not match its announcement.",
+    }, follow_redirects=True)
+    assert confirmation.status_code == 200
+    assert b'<h2 class="section-title">Report submitted</h2>' in confirmation.data
+    assert f'href="/events/{event_id}"' in confirmation.get_data(as_text=True)
+    assert b"Back to event" in confirmation.data
+    assert client.get(f"/events/{event_id}").status_code == 200
+
+
+@pytest.mark.parametrize("created_at,expected", [
+    (datetime(2026, 7, 1, 2, 30), "Jun 30, 2026 · 19:30 PDT"),
+    (datetime(2026, 12, 1, 2, 30), "Nov 30, 2026 · 18:30 PST"),
+])
+def test_report_confirmation_uses_pacific_time_without_revealing_review_notes(
+    app, client, moderation_case, created_at, expected,
+):
+    private_note = "Internal admin review details must stay private."
+    with app.app_context():
+        report = db.session.get(Report, moderation_case.report)
+        report.created_at = created_at
+        report.status = "dismissed"
+        report.review_note = private_note
+        report.reviewed_by_id = moderation_case.admin
+        report.reviewed_at = created_at
+        db.session.commit()
+        before = stored_snapshot()
+    sign_in(client, moderation_case.student)
+    response = client.get(f"/events/{moderation_case.event}/report")
+    assert response.status_code == 200
+    content = response.get_data(as_text=True)
+    assert expected in content
+    assert private_note not in content
+    with app.app_context():
+        assert stored_snapshot() == before
+
+
+def test_admin_review_links_to_the_real_event(client, moderation_case):
+    sign_in(client, moderation_case.admin)
+    response = client.get(f"/admin/reports/{moderation_case.report}")
+    assert response.status_code == 200
+    assert b"Open event page" in response.data
+    assert f'href="/events/{moderation_case.event}"' in response.get_data(as_text=True)
+    assert client.get(f"/events/{moderation_case.event}").status_code == 200
+
+
 def test_admin_queue_filters_reports_and_reads_do_not_change_records(
     app, client, moderation_records, moderation_case,
 ):
@@ -506,7 +567,7 @@ def test_removal_cancels_active_signups_resolves_pending_reports_and_preserves_h
     }).status_code == 302
     with app.app_context():
         item = db.session.get(Event, moderation_case.event)
-        assert item.status == "cancelled"
+        assert item.status == "removed"
         assert event_statistics(item)["registrations"] == 0
         assert item.spots_left() == item.capacity
         reports = [db.session.get(Report, report_id) for report_id in (moderation_case.report, second_id)]

@@ -1,0 +1,40 @@
+# Creates paid hosting only when a team member approves it in Render.
+# One instance + one disk: SQLite database and covers persist together.
+services:
+  - type: web
+    name: broncoshub
+    runtime: python
+    plan: starter
+    region: oregon
+    rootDir: event-hub
+    buildCommand: pip install -r requirements-production.txt
+    startCommand: python tools/start_production.py
+    healthCheckPath: /healthz
+    autoDeployTrigger: 'off'
+    disk:
+      name: broncoshub-data
+      mountPath: /var/data
+      sizeGB: 1
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.13
+      - key: APP_ENV
+        value: production
+      - key: SECRET_KEY
+        generateValue: true
+      - key: DATABASE_URL
+        value: sqlite:////var/data/broncoshub.db
+      - key: COVER_UPLOAD_DIR
+        value: /var/data/uploads/event-covers
+      - key: TRUST_PROXY
+        value: 'true'
+      - key: TRUSTED_HOSTS
+        sync: false
+      - key: PUBLIC_BASE_URL
+        sync: false
+      - key: PAYMENT_PROVIDER
+        value: disabled
+      - key: STRIPE_LIVE_MODE
+        value: 'false'
+      - key: ALLOWED_EMAIL_DOMAIN
+        value: scu.edu

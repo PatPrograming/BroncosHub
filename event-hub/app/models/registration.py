@@ -7,6 +7,7 @@
 #   Relationships: student, event, payment (one), ticket (one)
 from datetime import datetime, timezone
 from app.extensions import db
+from app.services.event_service import campus_now
 
 
 def _utcnow():
@@ -30,8 +31,9 @@ class Registration(db.Model):
         return self.status == "confirmed"
 
     def registration_view(self):
+        ended = self.event.end_time is None or self.event.end_time <= campus_now()
         payment = self.payment
-        if self.event.is_free:
+        if self.event.is_free and payment is None:
             payment_status = "not_required"
         elif payment is None:
             payment_status = "failed" if self.status == "failed" else "pending"
@@ -45,6 +47,7 @@ class Registration(db.Model):
             and ticket.is_valid
             and self.status == "confirmed"
             and self.event.status == "published"
+            and not ended
             and payment is not None
             and payment.status == "succeeded"
         )
@@ -52,9 +55,10 @@ class Registration(db.Model):
             "id": self.id,
             "status": self.status,
             "payment_status": payment_status,
+            "amount_cents": payment.amount_cents if payment is not None else self.event.price_cents,
+            "amount_label": f"${(payment.amount_cents if payment is not None else self.event.price_cents) / 100:,.2f}",
             "ticket_code": ticket.code if ticket_valid else None,
             "ticket_valid": ticket_valid,
-            "event": self.event.event_view(),
+            "ended": ended,
+            "event": self.event.attendee_event_view(),
         }
-
-     

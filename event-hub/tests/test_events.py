@@ -78,9 +78,12 @@ def test_creating_an_event_rejects_a_negative_price(app, client, people):
         assert db.session.scalar(db.select(Event)) is None
 
 
-def test_students_cannot_create_events(client, people):
+def test_students_can_create_events_without_changing_role(app, client, people):
     sign_in(client, people["student"])
-    assert client.post("/organizer/events/new", data=form()).status_code == 403
+    assert client.post("/organizer/events/new", data=form()).status_code == 302
+    with app.app_context():
+        assert db.session.scalar(db.select(Event)).organizer_id == people["student"]
+        assert db.session.get(User, people["student"]).role == "student"
 
 
 def test_a_cancelled_event_hides_the_register_button(app, client, people):
@@ -116,4 +119,4 @@ def test_browsing_lists_published_events_and_filters_by_category(app, client, pe
 
 def test_browsing_shows_a_message_when_nothing_matches(client, people):
     page = client.get("/events?q=nothing-like-this").get_data(as_text=True)
-    assert "No plans found" in page
+    assert "No events found" in page

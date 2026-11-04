@@ -29,8 +29,8 @@
 {% else %}<circle cx="12" cy="12" r="8"/>{% endif %}</svg>
 {%- endmacro %}
 {% macro badge(status) -%}
-{% set labels = {'published':'Published','confirmed':'Confirmed','succeeded':'Paid','pending':'Pending','declined':'Payment declined','failed':'Payment failed','cancelled':'Cancelled','free':'Free','registered':'Registered','active':'Active'} %}
-<span class="badge {% if status in ['confirmed','succeeded','published','registered','active'] %}badge-green{% elif status in ['cancelled','declined','failed'] %}badge-red{% elif status == 'pending' %}badge-amber{% endif %}">{{ labels.get(status, status|title) }}</span>
+{% set labels = {'published':'Published','confirmed':'Confirmed','succeeded':'Paid','pending':'Pending','declined':'Payment declined','failed':'Payment failed','cancelled':'Cancelled','removed':'Removed','free':'Free','registered':'Registered','active':'Active'} %}
+<span class="badge {% if status in ['confirmed','succeeded','published','registered','active'] %}badge-green{% elif status in ['cancelled','removed','declined','failed'] %}badge-red{% elif status == 'pending' %}badge-amber{% endif %}">{{ labels.get(status, status|title) }}</span>
 {%- endmacro %}
 {% macro event_card(event) -%}
 <article class="event-card">

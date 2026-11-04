@@ -145,6 +145,7 @@ def create_preview_app(testing=False):
         name = profile.get("name", "Alex Chen")
         return {"id": "preview-user", "name": name, "first_name": name.split()[0],
                 "email": "alex.preview@scu.edu", "role": role,
+                "can_organize": role in ("student", "organizer", "admin"),
                 "year_level": profile.get("year_level", "third_year")}
 
     def require_role(*roles):
@@ -218,9 +219,35 @@ def create_preview_app(testing=False):
 
     @app.get("/")
     def index():
-        events = [event for event in all_events() if event["status"] == "published"]
-        featured = next(event for event in events if event["id"] == 1) if any(e["id"] == 1 for e in events) else (events[0] if events else None)
-        return render_template("index.html", events=events, featured_event=featured)
+        # The preview uses a fixed midnight snapshot, not the computer's clock.
+        now = datetime.combine(PREVIEW_TODAY, datetime.min.time())
+        tomorrow = now + timedelta(days=1)
+        events = [event for event in all_events() if event["status"] == "published"
+                  and datetime.fromisoformat(event["end_value"]) > now]
+        today = []
+        for event in events:
+            start = datetime.fromisoformat(event["start_value"])
+            if start < tomorrow:
+                today.append({**event, "ongoing": start <= now})
+        next_event = next((event for event in events
+                           if datetime.fromisoformat(event["start_value"]) >= tomorrow), None)
+        registrations = []
+        if user() is not None:
+            for registration in state()["registrations"]:
+                if registration["status"] != "confirmed":
+                    continue
+                view = registration_view(registration)
+                event = view["event"]
+                if event["status"] == "published" and datetime.fromisoformat(event["end_value"]) > now:
+                    registrations.append(view)
+        registrations.sort(key=lambda registration: (registration["event"]["start_value"], registration["id"]))
+        return render_template(
+            "index.html", events=events,
+            home_today_label=f"{PREVIEW_TODAY:%A, %B} {PREVIEW_TODAY.day}",
+            today_events=today[:4], today_event_count=len(today),
+            next_campus_event=next_event,
+            next_registration=registrations[0] if registrations else None,
+        )
 
     @app.get("/events")
     def events_list():
@@ -384,7 +411,7 @@ def create_preview_app(testing=False):
         return redirect(f"/my-registrations/{registration_id}")
 
     @app.get("/organizer/")
-    @require_role("organizer")
+    @require_role("student", "organizer", "admin")
     def organizer_dashboard():
         events = [e for e in all_events() if e["owner_id"] == "preview-user"]
         stats = stats_for(events)
@@ -496,11 +523,11 @@ def create_preview_app(testing=False):
                                mode="edit" if event else "create", draft_art=draft_art,
                                **cover_context(cover_token)), 422 if errors else 200
 
-    app.add_url_rule("/organizer/events/new", "create_event", require_role("organizer")(event_form), methods=["GET", "POST"])
-    app.add_url_rule("/organizer/events/<int:event_id>/edit", "edit_event", require_role("organizer")(event_form), methods=["GET", "POST"])
+    app.add_url_rule("/organizer/events/new", "create_event", require_role("student", "organizer", "admin")(event_form), methods=["GET", "POST"])
+    app.add_url_rule("/organizer/events/<int:event_id>/edit", "edit_event", require_role("student", "organizer", "admin")(event_form), methods=["GET", "POST"])
 
     @app.post("/organizer/events/<int:event_id>/cancel")
-    @require_role("organizer")
+    @require_role("student", "organizer", "admin")
     def event_cancel(event_id):
         event = owner_event(event_id)
         existing = state()["events"].get(str(event_id), next((e for e in EVENTS if e["id"] == event_id), event))
@@ -510,7 +537,7 @@ def create_preview_app(testing=False):
         return redirect("/organizer/")
 
     @app.get("/organizer/events/<int:event_id>/stats")
-    @require_role("organizer")
+    @require_role("student", "organizer", "admin")
     def event_stats(event_id):
         event = owner_event(event_id)
         return render_template("organizer/stats.html", event=event, stats=stats_for([event]))
@@ -628,7 +655,7 @@ def create_preview_app(testing=False):
         return redirect("/")
 
     for status, title, message in [
-        (403, "This page needs a different role", "Choose the student, organizer, or admin preview from the role menu to explore this area."),
+        (403, "Access unavailable", "You can manage only your own events. Event reports are available in the admin view."),
         (404, "Looks like this page moved", "The link may be out of date. Head back to Explore and find something new."),
         (409, "This action is unavailable", "The event may be cancelled or full, or this registration needs a different action. Paid cancellations and refunds are not available in this preview."),
         (413, "That form is a little too large", "Choose a cover image of 5 MB or smaller, keep the other fields short, and submit again. Your saved event has not changed."),

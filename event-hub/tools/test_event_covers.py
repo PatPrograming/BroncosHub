@@ -186,12 +186,22 @@ class EventCoverTests(unittest.TestCase):
         self.client.get("/preview/reset")
         self.assertEqual(self.client.get(event["cover_url"]).status_code, 404)
 
-    def test_upload_requires_organizer_role_and_event_ownership(self):
+    def test_students_can_upload_own_covers_but_cannot_change_another_hosts_cover(self):
         self.client.get("/preview/role/student")
-        self.assertEqual(self.client.post("/organizer/events/new", data=self.fields(
-            cover_image=(self.image(), "image.png"))).status_code, 403)
-        self.client.get("/preview/role/organizer")
+        event = self.publish()
+        self.assertEqual(self.client.get(event["cover_url"]).status_code, 200)
+        self.assertEqual(self.client.post(f"/organizer/events/{event['id']}/edit", data=self.fields(
+            cover_image=(self.image(color="blue"), "replacement.png"))).status_code, 302)
+        _, changed = self.render(f"/events/{event['id']}")
+        self.assertNotEqual(changed["event"]["cover_url"], event["cover_url"])
+
+        _, before = self.render("/events/2")
         self.assertEqual(self.client.post("/organizer/events/2/edit", data=self.fields(
+            cover_image=(self.image(), "image.png"))).status_code, 403)
+        _, after = self.render("/events/2")
+        self.assertEqual(after["event"], before["event"])
+        self.client.get("/preview/role/guest")
+        self.assertEqual(self.client.post("/organizer/events/new", data=self.fields(
             cover_image=(self.image(), "image.png"))).status_code, 403)
 
 

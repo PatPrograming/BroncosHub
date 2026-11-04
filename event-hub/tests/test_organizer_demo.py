@@ -58,7 +58,8 @@ def test_demo_pages_show_real_counts_and_refresh_after_registration_changes(demo
     details, statistics = page_statistics(demo, client, "/organizer/events/1/stats")
     assert statistics["registrations"] == 18
     assert b"<strong>18</strong>" in details.data
-    assert statistics["revenue_available"] is False
+    assert statistics["revenue_available"] is True
+    assert statistics["revenue_cents"] == 0
 
     with demo.app_context():
         registration = db.session.scalar(
@@ -195,7 +196,7 @@ def test_demo_event_removal_updates_organizer_counts_and_keeps_history(demo):
     _, workshop_statistics = page_statistics(demo, client, f"/organizer/events/{workshop_id}/stats")
     assert workshop_statistics["registrations"] == 0
     with demo.app_context():
-        assert db.session.get(Event, workshop_id).status == "cancelled"
+        assert db.session.get(Event, workshop_id).status == "removed"
         registrations = db.session.scalars(db.select(Registration)).all()
         assert {registration.id for registration in registrations} == set(registration_snapshot)
         for registration in registrations:

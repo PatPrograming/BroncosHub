@@ -70,7 +70,9 @@ def test_logout_ends_the_session(mock_claims, client):
     client.get("/auth/google/callback")
     assert client.get("/profile").status_code == 200
 
-    logged_out = client.get("/logout", follow_redirects=False)
+    with client.session_transaction() as session:
+        token = session["moderation_csrf"]["token"]
+    logged_out = client.post("/logout", data={"csrf_token": token}, follow_redirects=False)
     assert logged_out.status_code == 302
     profile = client.get("/profile", follow_redirects=False)
     assert profile.status_code == 302

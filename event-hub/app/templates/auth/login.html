@@ -2,16 +2,16 @@
 {% from "components/ui.html" import icon, badge, empty_state %}
 {% set values = form_values|default({}) %}
 {% set field_errors = errors|default({}) %}
-{% block title %}Welcome back{% endblock %}
+{% block title %}Log in{% endblock %}
 {% block content %}
 <section class="container page-section account-auth">
   <div class="auth-layout auth-layout-task-first">
     <div class="auth-story">
       <img class="auth-art" src="/static/images/campus.svg" alt="" aria-hidden="true">
-      <div class="auth-story-content stack"><p class="eyebrow">Your campus. Your people.</p><h2 class="page-title">The best part of campus is showing up.</h2><p>Find the small moments, big nights, and new faces that make this place yours.</p><div class="inline"><span class="auth-step">SCU</span><span>Find a plan. Bring a friend. Make a memory.</span></div></div>
+
     </div>
     <div class="auth-form-panel stack">
-      <div><p class="eyebrow">Back for more</p><h1 class="page-title auth-task-title">Welcome back, Bronco.</h1><p class="muted">Your next campus plan is waiting.</p></div>
+      <h1 class="page-title auth-task-title">Log in</h1>
       {% if preview_mode %}<div class="alert alert-warning small">UI demo — password entry is disabled. No real sign-in takes place.</div>{% endif %}
       {% if field_errors %}<div class="alert alert-error" role="alert"><strong>Check your details and try again.</strong><ul>{% for field,message in field_errors.items() %}<li>{{ message }}</li>{% endfor %}</ul></div>{% endif %}
       {% if preview_mode %}
@@ -24,12 +24,12 @@
       </form>
       {% else %}
       <div class="auth-form stack">
-        <p class="small muted">Use the Google account for your @scu.edu email.</p>
+        <p class="small muted">Use your @scu.edu Google account.</p>
         <a class="button button-primary" href="/auth/google{% if next_url %}?next={{ next_url|urlencode }}{% endif %}">Continue with Google {{ icon('arrow-right') }}</a>
       </div>
       {% endif %}
-      <p class="small muted">New around here? <a class="link" href="/signup">Join BroncosHub</a></p>
-      <a class="link small" href="/events">{{ icon('arrow-left') }} Keep exploring events</a>
+      <p class="small muted">New to BroncosHub? <a class="link" href="/signup">Create an account</a></p>
+      <a class="link small" href="/events">{{ icon('arrow-left') }} Browse events</a>
     </div>
   </div>
 </section>

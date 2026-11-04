@@ -99,7 +99,7 @@
 .campus-week-rail {
   position: relative;
   display: grid;
-  grid-template-columns: minmax(155px, 1.7fr) repeat(7, minmax(84px, 1fr));
+  grid-template-columns: minmax(100px, 1fr) repeat(7, minmax(84px, 1fr));
   gap: 8px;
   min-width: 820px;
   border: 1px solid var(--line);
@@ -312,8 +312,8 @@ html[data-campus-direction]::view-transition-old(campus-calendar) {
     font-size: 16px;
   }
   .campus-week-rail {
-    min-width: 790px;
-    grid-template-columns: 160px repeat(7, minmax(78px, 1fr));
+    min-width: 734px;
+    grid-template-columns: 104px repeat(7, minmax(78px, 1fr));
   }
   .campus-week-range {
     font-size: 14px;

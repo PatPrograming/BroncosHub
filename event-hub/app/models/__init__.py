@@ -6,5 +6,7 @@ from app.models.registration import Registration
 from app.models.payment import Payment
 from app.models.ticket import Ticket
 from app.models.report import Report
+from app.models.checkout_attempt import CheckoutAttempt
+from app.models.connected_account import ConnectedAccount
 
-__all__ = ["Event", "User", "Registration", "Payment", "Ticket", "Report"]
+__all__ = ["Event", "User", "Registration", "Payment", "Ticket", "Report", "CheckoutAttempt", "ConnectedAccount"]

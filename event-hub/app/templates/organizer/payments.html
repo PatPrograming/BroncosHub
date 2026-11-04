@@ -1,0 +1,28 @@
+{% extends 'base.html' %}
+{% from 'components/ui.html' import icon %}
+{% block title %}Event payments{% endblock %}
+{% block content %}
+<section class="container page-section payment-settings">
+  <div class="page-heading"><div><h1 class="page-title">Event payments</h1></div><a class="button button-secondary" href="{{ url_for('organizer.dashboard') }}">Back to your events {{ icon('arrow-right') }}</a></div>
+  <div class="stack">
+    <div class="card form-card stack">
+      {% if not payments_configured %}
+      <div class="alert alert-info">Paid tickets aren't available yet. Free events are still available.</div>
+      {% elif account and account.ready %}
+      <div class="alert alert-success">{{ 'Ready for payments' if account.livemode else 'Ready in Stripe test mode · no real charges' }}</div>
+      {% else %}
+      <p>Complete Stripe setup before selling tickets. Free events do not need a Stripe account.</p>
+      {% endif %}
+      {% if payments_configured %}
+      <div class="form-actions">
+        {% if not account or not account.ready %}<form method="post" action="{{ url_for('payments.onboard') }}" class="stack-sm"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          {% if not account or not account.stripe_account_id %}<div class="field"><label for="payment-country">Payment account country</label><select id="payment-country" name="country" required aria-describedby="payment-country-help"><option value="">Choose your account country</option><option value="US">United States</option></select><p id="payment-country-help" class="field-help">Where the person or organization receiving payments is based, not citizenship. US accounts only. Club setup must be completed by an authorized treasurer or account owner.</p></div>{% endif %}
+          <button class="button button-primary">{{ 'Continue Stripe setup' if account and account.stripe_account_id else 'Set up with Stripe' }} {{ icon('arrow-up-right') }}</button></form>{% endif %}
+        {% if account and account.stripe_account_id %}<form method="post" action="{{ url_for('payments.refresh') }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="button button-secondary">Check account status</button></form><a class="button button-ghost" href="https://dashboard.stripe.com/" rel="noopener noreferrer" target="_blank">Open Stripe dashboard {{ icon('arrow-up-right') }}</a>{% endif %}
+      </div>
+      {% endif %}
+    </div>
+    <p class="muted">Payments go to your Stripe account. BroncosHub takes no platform fee; Stripe processing fees apply. Manage payouts and bank details in Stripe.</p>
+  </div>
+</section>
+{% endblock %}

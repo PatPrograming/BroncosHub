@@ -1,12 +1,13 @@
 # app/routes/registrations.py
 # Student registration pages. UC-002 to UC-005. Backlog #9, #10, #13-#18.
-from flask import Blueprint, abort, flash, redirect, render_template, request, url_for
+from flask import Blueprint, abort, current_app, flash, redirect, render_template, request, url_for
 from flask_login import current_user, login_required
 from sqlalchemy.orm import joinedload, selectinload
 
 from app.extensions import db
 from app.models import Registration
 from app.models.event import Event
+from app.pagination import paginate
 from app.security import csrf_token, validate_csrf
 from app.services.event_service import campus_now
 from app.services.payment_service import (
@@ -22,6 +23,8 @@ from app.services.registration_service import (
     register_student,
     cancel_free_registration,
 )
+from app.services.stripe_checkout_service import CheckoutTemporarilyUnavailable, start_checkout
+from app.services.stripe_gateway import PaymentProviderError
 
 registrations_bp = Blueprint("registrations", __name__)
 
@@ -55,7 +58,7 @@ def register(event_id):
         .where(Event.id == event_id)
         .options(joinedload(Event.organizer), selectinload(Event.registrations))
     )
-    if event is None:
+    if event is None or event.is_removed:
         abort(404)
 
     if request.method == "POST":
@@ -67,7 +70,7 @@ def register(event_id):
             return redirect(url_for("events.detail", event_id=event.id))
         if registration.status in ("pending", "failed"):
             return redirect(url_for("registrations.checkout", registration_id=registration.id))
-        flash("You're registered. See you there!", "success")
+        flash("Registration confirmed.", "success")
         return redirect(url_for("registrations.detail", registration_id=registration.id))
 
     view = event.event_view()
@@ -80,7 +83,7 @@ def register(event_id):
 @registrations_bp.get("/my-registrations")
 @login_required
 def my_registrations():
-    registrations = db.session.scalars(
+    registrations, pagination = paginate(
         db.select(Registration)
         .join(Registration.event)
         .where(Registration.student_id == current_user.id)
@@ -90,11 +93,12 @@ def my_registrations():
             joinedload(Registration.payment),
             joinedload(Registration.ticket),
         )
-        .order_by(Event.start_time)
-    ).unique().all()
+        .order_by(Event.start_time, Registration.id)
+    )
     return render_template(
         "registrations/my_registrations.html",
         registrations=[registration.registration_view() for registration in registrations],
+        pagination=pagination,
         active_nav="my-events",
     )
 
@@ -109,7 +113,7 @@ def cancel(registration_id):
     except CancellationNotAllowed as refusal:
         flash(str(refusal), "warning")
     else:
-        flash("Your registration is cancelled.", "info")
+        flash("Registration cancelled.", "info")
     return redirect(url_for("registrations.detail", registration_id=registration.id))
 
 
@@ -126,7 +130,20 @@ def checkout(registration_id):
         if already_paid:
             return redirect(url_for("registrations.detail", registration_id=registration.id))
         try:
+            if current_app.config.get("PAYMENT_PROVIDER") == "stripe":
+                from app.services.stripe_gateway import trusted_url
+                hosted_url = start_checkout(
+                    registration,
+                    trusted_url(url_for("registrations.detail", registration_id=registration.id)),
+                    trusted_url(url_for("registrations.checkout", registration_id=registration.id)),
+                )
+                return redirect(hosted_url, code=303)
             complete_purchase(registration, request.form.get("card_number", ""))
+        except (CheckoutTemporarilyUnavailable, PaymentProviderError) as refusal:
+            return render_template(
+                "registrations/checkout.html", registration=view,
+                checkout_retry_message=str(refusal), errors={}, active_nav="my-events",
+            ), 503
         except UnrecognizedCard:
             return render_template(
                 "registrations/checkout.html",

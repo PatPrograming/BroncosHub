@@ -72,12 +72,16 @@ class PreviewTests(unittest.TestCase):
         self.assertEqual(self.client.get("/admin/reports").status_code, 200)
 
     def test_role_and_owner_boundaries(self):
-        for path in ("/organizer/", "/organizer/events/new", "/organizer/events/1/stats", "/admin/reports"):
-            self.assertEqual(self.client.get(path).status_code, 403)
-        self.role("organizer")
-        self.assertEqual(self.client.get("/organizer/events/2/edit").status_code, 403)
-        self.assertEqual(self.client.post("/organizer/events/2/cancel").status_code, 403)
+        for role in ("student", "organizer", "admin"):
+            self.role(role)
+            for path in ("/organizer/", "/organizer/events/new", "/organizer/events/1/stats"):
+                self.assertEqual(self.client.get(path).status_code, 200)
+            self.assertEqual(self.client.get("/organizer/events/2/edit").status_code, 403)
+            self.assertEqual(self.client.post("/organizer/events/2/cancel").status_code, 403)
+            self.assertEqual(self.client.get("/admin/reports").status_code, 200 if role == "admin" else 403)
         self.role("guest")
+        self.assertEqual(self.client.get("/organizer/").status_code, 403)
+        self.assertEqual(self.client.post("/organizer/events/new", data=self.valid_event()).status_code, 403)
         self.assertEqual(self.client.get("/events/1").status_code, 200)
         self.assertEqual(self.client.post("/events/1/register").status_code, 403)
         self.assertEqual(self.client.get("/my-registrations").status_code, 403)

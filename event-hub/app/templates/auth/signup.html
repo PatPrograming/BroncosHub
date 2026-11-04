@@ -2,22 +2,22 @@
 {% from "components/ui.html" import icon, badge, empty_state %}
 {% set values = form_values|default({}) %}
 {% set field_errors = errors|default({}) %}
-{% block title %}Join the campus crowd{% endblock %}
+{% block title %}Create account{% endblock %}
 {% block content %}
 <section class="container page-section account-auth">
   <div class="auth-layout auth-layout-task-first">
     <div class="auth-story">
       <img class="auth-art" src="/static/images/campus.svg" alt="" aria-hidden="true">
-      <div class="auth-story-content stack"><p class="eyebrow">There’s a place for you here</p><h2 class="page-title">A little less scrolling.<br>A lot more living.</h2><p>Find your kind of event and keep all your campus plans in one place.</p><div class="inline"><span class="auth-step">SCU</span><span>Made for the people who make campus, campus.</span></div></div>
+
     </div>
     <div class="auth-form-panel stack">
-      <div><p class="eyebrow">Meet your campus</p><h1 class="page-title auth-task-title">Come be part of it.</h1><p class="muted">A few details, then you’re on your way.</p></div>
+      <h1 class="page-title auth-task-title">Create account</h1>
       {% if preview_mode %}<div class="alert alert-warning small">UI demo — no account is created. Password fields are disabled.</div>{% endif %}
-      {% if field_errors %}<div class="alert alert-error" role="alert"><strong>A few details need another look.</strong><ul>{% for field,message in field_errors.items() %}<li><a href="#{{ field }}">{{ message }}</a></li>{% endfor %}</ul></div>{% endif %}
+      {% if field_errors %}<div class="alert alert-error" role="alert"><strong>Check your details and try again.</strong><ul>{% for field,message in field_errors.items() %}<li><a href="#{{ field }}">{{ message }}</a></li>{% endfor %}</ul></div>{% endif %}
       {% if preview_mode %}
       <form class="auth-form stack" method="post" action="/signup">
         {% if csrf_token is defined %}<input type="hidden" name="csrf_token" value="{{ csrf_token() if csrf_token is callable else csrf_token }}">{% endif %}
-        <div class="field"><label for="name">Your name</label><input id="name" name="name" autocomplete="name" required maxlength="80" placeholder="What should we call you?" value="{{ values.get('name', 'Demo Bronco') }}"{% if field_errors.get('name') %} aria-invalid="true" aria-describedby="name-error"{% endif %}>{% if field_errors.get('name') %}<p id="name-error" class="small">{{ field_errors.name }}</p>{% endif %}</div>
+        <div class="field"><label for="name">Your name</label><input id="name" name="name" autocomplete="name" required maxlength="80" placeholder="Your name" value="{{ values.get('name', 'Demo Bronco') }}"{% if field_errors.get('name') %} aria-invalid="true" aria-describedby="name-error"{% endif %}>{% if field_errors.get('name') %}<p id="name-error" class="small">{{ field_errors.name }}</p>{% endif %}</div>
         <div class="field"><label for="email">SCU email</label><input id="email" name="email" type="email" autocomplete="username" required placeholder="you@scu.edu" value="demo@scu.edu" readonly{% if field_errors.get('email') %} aria-invalid="true" aria-describedby="email-error"{% endif %}>{% if field_errors.get('email') %}<p id="email-error" class="small">{{ field_errors.email }}</p>{% endif %}</div>
         <div class="form-grid auth-password-grid">
           <div class="field"><label for="password">Password</label><input id="password" name="password" type="password" autocomplete="new-password" disabled placeholder="••••••••"{% if field_errors.get('password') %} aria-invalid="true" aria-describedby="password-error"{% endif %}>{% if field_errors.get('password') %}<p id="password-error" class="small">{{ field_errors.password }}</p>{% endif %}</div>
@@ -28,11 +28,11 @@
       </form>
       {% else %}
       <div class="auth-form stack">
-        <p class="small muted">Your first visit with a verified @scu.edu Google account creates your BroncosHub profile. You can add your year level afterward.</p>
+        <p class="small muted">Sign up with your @scu.edu Google account.</p>
         <a class="button button-primary" href="/auth/google">Continue with Google {{ icon('arrow-right') }}</a>
       </div>
       {% endif %}
-      <p class="small muted">Already part of the crowd? <a class="link" href="/login">Sign in</a></p>
+      <p class="small muted">Already have an account? <a class="link" href="/login">Sign in</a></p>
     </div>
   </div>
 </section>

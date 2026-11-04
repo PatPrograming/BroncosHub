@@ -9,6 +9,7 @@ from sqlalchemy.orm import joinedload
 
 from app.extensions import db
 from app.models import Event, Report
+from app.pagination import paginate
 from app.security import csrf_token, validate_csrf
 from app.services.moderation_service import resolve_report
 
@@ -29,7 +30,7 @@ def admin_required(view):
 @admin_bp.context_processor
 def moderation_context():
     return {"active_nav": "admin", "moderation_enabled": True,
-            "event_browsing_available": False, "csrf_token": csrf_token}
+            "event_browsing_available": True, "csrf_token": csrf_token}
 
 
 def _reports_query():
@@ -61,8 +62,9 @@ def reports():
     counts = {"pending": 0, "resolved": 0}
     for status, count in db.session.execute(select(Report.status, func.count()).group_by(Report.status)):
         counts["pending" if status == "pending" else "resolved"] += count
+    rows, pagination = paginate(query, parameters={"status": filter_status})
     return render_template("admin/reports.html",
-                           reports=[row.report_view() for row in db.session.scalars(query)],
+                           reports=[row.report_view() for row in rows], pagination=pagination,
                            counts=counts, filter_status=filter_status)
 
 
@@ -114,7 +116,7 @@ def remove_report(report_id):
 def moderation_error(error):
     titles = {400: "Please try again", 403: "Admin access needed", 404: "Report not found"}
     messages = {400: error.description, 403: "Only admins can review event reports.",
-                404: "This report isn't available. It may have been removed from the system."}
+                404: "This report isn't available."}
     is_admin = current_user.is_authenticated and current_user.role == "admin"
     return render_template(
         "errors/error.html", status=error.code, title=titles[error.code], message=messages[error.code],

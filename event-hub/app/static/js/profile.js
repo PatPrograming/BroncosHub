@@ -14,7 +14,7 @@
     const dirty = name.value.trim() !== saved.name || year.value !== saved.year;
     save.disabled = !dirty && !hasErrors;
     discard.hidden = !dirty && !hasErrors;
-    const message = dirty ? 'You have unsaved changes.' : hasErrors ? 'Please check your details.' : 'You’re up to date.';
+    const message = dirty ? 'Unsaved changes.' : hasErrors ? 'Check your details.' : 'No unsaved changes.';
     if (status.textContent !== message) status.textContent = message;
     status.dataset.dirty = String(dirty);
   }

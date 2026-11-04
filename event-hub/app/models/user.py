@@ -1,7 +1,8 @@
 # app/models/user.py
-# User table: students, organizers and admins. Backlog #1, #2, #22.
+# SCU accounts can attend and host. Admin moderation is a separate permission.
 from datetime import datetime, timezone
 
+from flask import current_app
 from flask_login import UserMixin
 
 from app.extensions import db, login_manager
@@ -24,6 +25,24 @@ class User(UserMixin, db.Model):
     created_at = db.Column(db.DateTime, nullable=False, default=_utcnow)
     events = db.relationship("Event", back_populates = 'organizer' )
     registrations = db.relationship("Registration", back_populates="student")
+
+    @property
+    def can_organize(self):
+        """Hosting is available to SCU accounts without changing their role.
+
+        Google sign-in verifies the identity before creating the account. Check
+        the stored link and domain as well so unlinked/legacy rows do not gain
+        hosting access just because they have an organizer role.
+        """
+        if (self.role not in ("student", "organizer", "admin")
+                or not isinstance(self.google_sub, str) or not self.google_sub.strip()
+                or not isinstance(self.email, str)):
+            return False
+        email = self.email.strip().lower()
+        local, separator, domain = email.partition("@")
+        allowed = current_app.config["ALLOWED_EMAIL_DOMAIN"].strip().lower()
+        return bool(local and separator == "@" and domain == allowed
+                    and len(email) <= 255 and not any(char.isspace() for char in email))
 
     def account_view(self):
         name = self.name or "Bronco"

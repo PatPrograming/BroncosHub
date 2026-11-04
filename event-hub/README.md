@@ -1,111 +1,81 @@
-# Event Hub
+# BroncosHub
 
-A website where SCU students find campus and Santa Clara / San Jose events,
-register, and buy tickets, and where organizers publish events and see
-statistics. Python (Flask) backend, server-rendered HTML pages, SQLite database.
+Campus events for the SCU community. Flask serves the pages, SQLAlchemy stores records in SQLite, and pytest checks the app. Team: Jaden Hill, Patrick Zhang, Ethan Can.
 
-Team: Jaden Hill, Patrick Zhang, Ethan Can
+## Current application — November 4, 2026
+
+The real app connects event creation, browsing/search/calendar, registration, tickets, profiles, persistent cover images, organizer statistics, and report moderation. Lists use pagination. Removed events and covers are hidden from students while receipts and administrator review history remain available. Registration capacity is checked inside database transactions so simultaneous requests cannot take the same final seat.
+
+Organizer-owned Stripe payments are implemented using hosted onboarding and Checkout. BroncosHub takes no platform fee. Paid event publishing and checkout require a ready connected account. Signed payment notifications and reconciliation confirm purchases; returning from checkout alone never issues a ticket. Event cancellation/removal queues refunds and invalidates admission. Payment recovery runs alongside the production web process.
+
+**Payments are disabled until configured. Google credentials, Stripe sandbox/live verification, and public hosting still need setup.** Local tests do not prove these external services work. See [deployment and payment setup](docs/deployment.md).
 
 ## Run it locally
 
-From the `event-hub` folder. On macOS, `python` is not a command until the virtual environment below is active.
+Use **Python 3.12 or newer**. From the repository root:
 
-```bash
+```sh
 cd event-hub
-python3 -m venv .venv
-source .venv/bin/activate          # Windows: .venv\Scripts\activate
-pip install -r requirements.txt
-cp .env.example .env               # Windows: copy .env.example .env
+python3.12 -m venv .venv
+source .venv/bin/activate
+python -m pip install -r requirements.txt
 ```
 
-Open `.env` and set `SECRET_KEY` to any long random string. Set `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` from the Google Auth Platform web client. Leave `ALLOWED_EMAIL_DOMAIN=scu.edu`. The client secret is shown only once; it belongs in `.env`, which is gitignored, not in `.env.example`.
+On Windows, activate with `.venv\Scripts\activate`. If `.env` does not exist, copy `.env.example` to `.env`. Keep an existing `.env`; do not overwrite its settings. Set `SECRET_KEY` to a long random value. Keep `.env` out of Git.
 
-In Google Cloud Console, the web client's authorized redirect URI must be exactly:
-
-`http://127.0.0.1:5000/auth/google/callback`
-
-Start the site and leave that Terminal window open:
-
-```bash
+```sh
 python run.py
 ```
 
-Open **http://127.0.0.1:5000/login** (use `127.0.0.1`, not `localhost`). Choose **Continue with Google** and sign in with a verified `@scu.edu` account. The first visit creates a student account; a later visit signs that person in. Press Control+C in the same Terminal window to stop the server.
+Open **http://127.0.0.1:5080**. This is the actual application and saved database, with no fictional accounts. Stop it with Control+C. Debug mode is off by default. `PORT` can change the port; the Google callback must match the chosen address exactly.
 
-```bash
-pytest                             # run the tests
+Google sign-in needs `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` in `.env`, with `ALLOWED_EMAIL_DOMAIN=scu.edu`. For the default local address, the authorized redirect URI is:
+
+`http://127.0.0.1:5080/auth/google/callback`
+
+Every verified SCU account can create events and manage its own events, statistics and payment setup. New accounts keep the student role; no organizer approval is needed. Publishing a paid event requires the host’s Stripe account to be ready.
+
+Admin moderation remains separate. After a moderator signs in, a trusted operator can grant admin access:
+
+```sh
+python -m flask --app wsgi:app user-role moderator@scu.edu --role admin
 ```
 
-## Organizer dashboard
+The command asks for confirmation. Use `--role student` to revoke admin access while keeping ordinary hosting access. Existing organizer accounts keep the same hosting permissions. The command cannot create accounts or bypass Google sign-in.
 
-The real app now serves `/organizer/` and `/organizer/events/<id>/stats` for
-organizer/admin accounts, limited to their own events. It counts confirmed
-registrations, shows remaining capacity and groups signups by year. Revenue
-stays unavailable until Payment records are implemented.
+## Tests
 
-For a ready-to-use local demo, run `python tools/preview_organizer.py --port 5075`
-and open **http://localhost:5075/demo**, or use **Start Organizer Demo.command**
-in the repository root. This uses the real routes and models with fictional
-records in a separate in-memory database. It does not seed, reset or sign into
-the real application. See [integration notes](docs/ui-integration.md) for the
-count definitions, tests and remaining dependencies.
-
-## Event moderation
-
-Signed-in users can report another organizer's published event at
-`/events/<id>/report`. Admins review pending and resolved reports at
-`/admin/reports`. Dismissing a report leaves the event unchanged; removing an
-event marks it cancelled, cancels active registrations and resolves its pending
-reports. Each decision records the admin, time and reason. These routes enforce
-roles and CSRF checks; the report history is kept in the new `Report` table.
-
-Try **http://localhost:5075/demo/admin** in the same isolated demo. The top bar
-switches between organizer, admin and student reporting views. No real accounts
-or event records are changed. The public event page still needs its reporting
-link connected when Jaden's route is ready; payments/refunds remain unfinished.
-
-## Where things go
-
-```
-event-hub/
-├── run.py                 Start the dev server
-├── config.py              Settings read from .env
-├── requirements.txt       Python packages
-├── app/
-│   ├── __init__.py        create_app(): wires everything together
-│   ├── extensions.py      Database + sign-in manager
-│   ├── models/            User, Event, Registration, Report; Payment/Ticket unfinished
-│   ├── routes/            URLs and page handlers, one file per area
-│   │   ├── auth.py            sign up / sign in / profile        #1, #2, #22
-│   │   ├── events.py          browse, search, details            UC-001
-│   │   ├── registrations.py   register, pay, my registrations    UC-002 to UC-005
-│   │   ├── organizer.py       create, edit, cancel, stats        UC-006 to UC-008
-│   │   ├── reporting.py       submit event reports               #29
-│   │   └── admin.py           review / dismiss / remove          #29
-│   ├── services/          Business rules (registration, mock payments, stats)
-│   ├── templates/         HTML pages (Jinja2), same folders as routes
-│   └── static/            css/, js/, img/
-├── tests/                 pytest files, one per area
-└── scripts/seed.py        Demo data
+```sh
+python -m pytest -q tests tools
 ```
 
-Note: `app/` follows Flask's standard naming; to Flask, "app" means the web
-server program. This project is a website.
+Tests cover accounts/roles, CSRF, events, capacity races, payments/refunds, images, profiles, calendar, moderation, backups, and deployment settings. Stripe tests replace only the external provider boundary; actual app/database decisions still run. The Lab 5 class tests remain in `tests/lab5`; Lab 6 regression tests remain in `tests/lab6`.
 
-Every function and template names the backlog item (#) and use case (UC-00X)
-it implements. Search the code for `TODO` to see what's left.
+## Organizer statistics and moderation
 
-## Demo accounts (after seeding)
+Organizers manage their own events and see confirmed sign-ups, available capacity, and year-level summaries. Counts represent registrations, not check-ins. Payment totals use saved successful amounts before fees and exclude failed, pending, refunded, and refund-pending payments. Stripe's Dashboard shows settlement, payouts, and processing fees.
 
-| Email | Role | Password |
-| --- | --- | --- |
-| student@scu.edu | Student (Freshman) | password123 |
-| organizer@scu.edu | Organizer | password123 |
-| admin@scu.edu | Admin | password123 |
+Students can report published events. Administrators can dismiss a report or remove its event, with a recorded reason. Removal cancels active registrations, hides public content/covers, invalidates tickets, and queues Stripe refunds. Organizers cannot restore removed events. There is no attendee-kicking feature.
 
-Demo payment cards: `4242…` succeeds, `4000…` is declined, `4999…` stays pending.
+## Saved images and database upgrades
 
-## Git workflow
+The default database is `instance/broncoshub.db`. Covers are validated JPG/PNG/WebP images (up to 5 MB / 20 million pixels), re-encoded as WebP and saved to `instance/uploads/event-covers`. `COVER_UPLOAD_DIR` can select another directory. The media route checks access before serving private or removed event images.
 
-- `main` always runs. Work on a branch per backlog item: `feature/09-register-free-event`.
-- Open a pull request; one teammate reviews; tests must pass before merging.
+Startup adds the cover column to older SQLite databases, preserves records, and creates new payment tables. It also distinguishes legacy admin removals from ordinary cancellations. Keep the database and images together on persistent storage. Before deployment/updates, follow the verified offline backup and restore commands in [deployment notes](docs/deployment.md#data-and-updates). A database restore does not rewind payments already made in Stripe.
+
+## Project structure
+
+- `app/models/`: users, events, registrations, payments, tickets, reports, connected accounts and checkout attempts.
+- `app/routes/`: page handlers and signed Stripe callbacks.
+- `app/services/`: business rules, cover validation, payment gateway and reconciliation.
+- `app/templates/` and `app/static/`: shared page UI, styles, scripts and artwork.
+- `tools/start_production.py`: starts the production website and payment recovery together.
+- `tools/data_backup.py`: offline database/image backup and restore.
+- `docs/deployment.md`: hosting, secrets, payment setup and remaining external checks.
+- `docs/ui-integration.md`: teammate handoff and UI integration notes.
+
+## Older development previews
+
+`tools/preview_ui.py` (5074) and `tools/preview_organizer.py` (5075) are isolated fictional-data previews retained for earlier labs. They are not the real app and must never be deployed. Their mock cards do not charge money. Run `run.py` on port 5080 for the actual product.
+
+Before sharing changes, fetch teammate updates, review the diff, and run the relevant tests. Never commit `.env`, local databases, backups, or uploaded images.

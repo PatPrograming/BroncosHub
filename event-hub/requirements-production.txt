@@ -1,0 +1,3 @@
+-r requirements.txt
+# Gunicorn is used by the deployed app; run.py stays a local development entry.
+gunicorn==26.2.0

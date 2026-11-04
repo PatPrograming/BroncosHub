@@ -60,7 +60,7 @@ class CampusWeekTests(unittest.TestCase):
         self.assertIn('aria-current="date"', html)
         empty_html, empty = self.page("?date=2026-10-12")
         self.assertEqual(empty["events"], [])
-        self.assertIn("No plans found. Yet.", empty_html)
+        self.assertIn("No events found", empty_html)
         self.assertIn("0 events", empty["result_announcement"])
 
     def test_rail_counts_ignore_selected_day_but_honor_other_filters(self):

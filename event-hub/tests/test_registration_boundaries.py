@@ -6,6 +6,7 @@ from html.parser import HTMLParser
 import pytest
 
 from app.extensions import db
+from app.models import registration as registration_model
 from app.models import Event, Payment, Registration, Ticket, User
 from app.routes import events, registrations
 from app.services import payment_service, registration_service
@@ -37,7 +38,7 @@ def token_from(client, path):
 
 @pytest.fixture
 def accounts(app, monkeypatch):
-    for module in (events, registrations, payment_service, registration_service):
+    for module in (events, registrations, payment_service, registration_service, registration_model):
         monkeypatch.setattr(module, "campus_now", lambda: NOW)
     with app.app_context():
         owner = User(name="Boundary Organizer", email="boundary-owner@scu.edu",
@@ -119,12 +120,14 @@ def test_event_ending_after_checkout_opens_cannot_charge_or_issue_a_ticket(app, 
     for path in (checkout_url, f"/my-registrations/{registration_id}"):
         page = student.get(path)
         assert page.status_code == 200
-        assert b"This event has ended. Checkout is closed." in page.data
+        assert b"This event has ended." in page.data
+        assert b"Checkout is closed" in page.data
         assert b'name="card_number"' not in page.data
         assert f'href="{checkout_url}"'.encode() not in page.data
     refused = student.post(checkout_url, data={"csrf_token": token, "card_number": CARD})
     assert refused.status_code == 409
-    assert b"This event has ended. Checkout is closed." in refused.data
+    assert b"This event has ended." in refused.data
+    assert b"Checkout is closed" in refused.data
     assert b'name="card_number"' not in refused.data
     with app.app_context():
         assert db.session.get(Registration, registration_id).status == "pending"
@@ -206,5 +209,9 @@ def test_two_pending_checkouts_cannot_sequentially_purchase_the_last_seat(app, a
     repeated = clients[0].post(first_url, data={"csrf_token": first_token, "card_number": CARD},
                                follow_redirects=True)
     assert repeated.status_code == 200
-    assert ticket_code.encode() in repeated.data
+    assert ticket_code.encode() not in repeated.data
+    assert b"This event has ended" in repeated.data
+    with app.app_context():
+        assert db.session.scalar(db.select(Ticket)).code == ticket_code
+        assert db.session.scalar(db.select(Payment)).status == "succeeded"
     assert calls == [1500]

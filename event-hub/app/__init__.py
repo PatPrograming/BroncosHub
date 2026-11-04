@@ -10,6 +10,10 @@ from config import Config
 def create_app(config_class=Config):
     app = Flask(__name__)
     app.config.from_object(config_class)
+    from app.runtime import configure_runtime
+    from app.routing import register_id_converter
+    configure_runtime(app)
+    register_id_converter(app)
 
     db.init_app(app)
     login_manager.init_app(app)
@@ -25,12 +29,16 @@ def create_app(config_class=Config):
 
     from app import models  # noqa: F401
     from app.routes.auth import auth_bp
-    from app.routes.events import _upcoming_events, events_bp
-    from app.services.event_service import CATEGORIES
+    from app.routes.events import events_bp
+    from app.services.home_service import home_context
     from app.routes.organizer import organizer_bp
     from app.routes.admin import admin_bp
     from app.routes.reporting import reporting_bp
     from app.routes.registrations import registrations_bp
+    from app.routes.media import media_bp
+    from app.routes.payments import payments_bp
+    from app.routes.billing import billing_bp
+    from app.services.cover_service import ensure_event_schema
 
     app.register_blueprint(auth_bp)
     app.register_blueprint(events_bp)
@@ -38,23 +46,29 @@ def create_app(config_class=Config):
     app.register_blueprint(admin_bp)
     app.register_blueprint(reporting_bp)
     app.register_blueprint(registrations_bp)
+    app.register_blueprint(media_bp)
+    app.register_blueprint(payments_bp)
+    app.register_blueprint(billing_bp)
+    from app.commands import register_commands
+    register_commands(app)
 
     @app.context_processor
     def inject_account():
         user = current_user.account_view() if current_user.is_authenticated else None
-        return {"user": user, "preview_mode": False}
+        if user is not None:
+            user["can_organize"] = current_user.can_organize
+        return {"user": user, "preview_mode": False, "payment_provider": app.config["PAYMENT_PROVIDER"], "payment_live": app.config.get("STRIPE_LIVE_MODE", False)}
 
     @app.route("/")
     def home():
-        events = db.session.scalars(_upcoming_events().limit(3)).all()
         return render_template(
             "index.html",
-            events=[event.event_view() for event in events],
-            categories=CATEGORIES,
+            **home_context(current_user.id if current_user.is_authenticated else None),
             active_nav="home",
         )
 
     with app.app_context():
         db.create_all()
+        ensure_event_schema()
 
     return app

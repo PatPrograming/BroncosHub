@@ -116,17 +116,24 @@ def register(app, student, event_id):
     return registration_id, response
 
 
-def assert_counts(organizer, event_id, expected):
+def assert_counts(organizer, event_id, expected, publicly_visible=True):
     dashboard = Page(organizer.get("/organizer/"))
     statistics = Page(organizer.get(f"/organizer/events/{event_id}/stats"))
     for page in (dashboard, statistics):
         assert re.search(rf"Confirmed registrations\s+{expected}\b", page.text)
     assert f"/organizer/events/{event_id}/stats" in dashboard.links
-    assert f"/events/{event_id}" in statistics.links
+    assert (f"/events/{event_id}" in statistics.links) is publicly_visible
     if expected:
         assert f"Third year: {expected} registrations, 100 percent" in (
             organizer.get(f"/organizer/events/{event_id}/stats").get_data(as_text=True)
         )
+
+
+def assert_payment_total(organizer, event_id, expected):
+    for path in ("/organizer/", f"/organizer/events/{event_id}/stats"):
+        text = Page(organizer.get(path)).text
+        assert f"Successful payments {expected}" in text
+        assert "Mock checkout" in text
 
 
 def test_free_event_lifecycle_updates_student_pages_and_organizer_counts(app, browsers):
@@ -171,7 +178,7 @@ def test_free_event_lifecycle_updates_student_pages_and_organizer_counts(app, br
 
     cancel_url = f"{registration_url}/cancel"
     cancelled = student.post(cancel_url, data=confirmation.fields(cancel_url), follow_redirects=True)
-    assert "You've cancelled this registration." in Page(cancelled).text
+    assert "This registration is cancelled." in Page(cancelled).text
     with app.app_context():
         assert db.session.get(Registration, registration_id).status == "cancelled"
     assert_counts(organizer, event_id, 0)
@@ -210,6 +217,7 @@ def test_paid_registration_checkout_issues_one_ticket_and_updates_counts(app, br
         assert registration.status == "pending"
         assert registration.ticket is None
     assert_counts(organizer, event_id, 0)
+    assert_payment_total(organizer, event_id, "$0.00")
 
     checkout = Page(student.get(checkout_url))
     assert "$12.50" in checkout.text
@@ -226,18 +234,34 @@ def test_paid_registration_checkout_issues_one_ticket_and_updates_counts(app, br
     assert "Registration confirmed." in paid.text
     assert f"/my-registrations/{registration_id}" in Page(student.get("/my-registrations")).links
     assert_counts(organizer, event_id, 1)
+    assert_payment_total(organizer, event_id, "$12.50")
 
     repeated = Page(student.post(checkout_url, data=payment_fields, follow_redirects=True))
     assert ticket_code in repeated.text
     with app.app_context():
         assert db.session.scalar(db.select(db.func.count()).select_from(Payment)) == 1
         assert db.session.scalar(db.select(db.func.count()).select_from(Ticket)) == 1
+    assert_payment_total(organizer, event_id, "$12.50")
+
+    cancel_url = f"/organizer/events/{event_id}/cancel"
+    editor = Page(organizer.get(f"/organizer/events/{event_id}/edit"))
+    cancelled = organizer.post(cancel_url, data=editor.fields(cancel_url))
+    assert cancelled.status_code == 302
+    assert_counts(organizer, event_id, 0)
+    assert_payment_total(organizer, event_id, "$12.50")
+    with app.app_context():
+        assert db.session.get(Registration, registration_id).registration_view()["ticket_valid"] is False
 
 
 def test_reported_event_removal_closes_the_existing_registration_flow(app, browsers):
     clients, ids = browsers
     organizer, student, admin = clients["organizer"], clients["student"], clients["admin"]
     event_id = create_event(app, organizer, title="Flow Reported Event")
+    edit_url = f"/organizer/events/{event_id}/edit"
+    cancel_url = f"/organizer/events/{event_id}/cancel"
+    stale_editor = Page(organizer.get(edit_url))
+    register_url = f"/events/{event_id}/register"
+    stale_registration = Page(student.get(register_url))
     registration_id, _ = register(app, student, event_id)
     report_url = f"/events/{event_id}/report"
     assert report_url in Page(student.get(f"/events/{event_id}")).links
@@ -246,7 +270,7 @@ def test_reported_event_removal_closes_the_existing_registration_flow(app, brows
         **form.fields(report_url), "reason": "misleading",
         "details": "The advertised venue is different from the organizer's notice.",
     }, follow_redirects=True)
-    assert "Report received." in Page(submitted).text
+    assert "Report submitted An administrator will review your report." in Page(submitted).text
     with app.app_context():
         report = db.session.scalar(db.select(Report))
         assert report.status == "pending"
@@ -262,7 +286,7 @@ def test_reported_event_removal_closes_the_existing_registration_flow(app, brows
     resolved = Page(admin.post(remove_url, data={
         **review.fields(remove_url), "review_note": note,
     }, follow_redirects=True))
-    assert "Event removed." in resolved.text
+    assert f"Event removed {note}" in resolved.text
     assert note in resolved.text
     with app.app_context():
         report = db.session.get(Report, report_id)
@@ -270,10 +294,34 @@ def test_reported_event_removal_closes_the_existing_registration_flow(app, brows
             "removed", ids["admin"], note
         )
         assert report.reviewed_at is not None
-        assert db.session.get(Event, event_id).status == "cancelled"
+        assert db.session.get(Event, event_id).status == "removed"
         assert db.session.get(Registration, registration_id).status == "cancelled"
     assert review_url in Page(admin.get("/admin/reports?status=resolved")).links
     assert f"/events/{event_id}" not in Page(student.get("/events")).links
-    assert f"/events/{event_id}/register" not in Page(student.get(f"/events/{event_id}")).links
-    assert "no longer active" in Page(student.get(f"/my-registrations/{registration_id}")).text
-    assert_counts(organizer, event_id, 0)
+    # Direct links and old forms cannot expose or reopen a removed event.
+    for browser in (app.test_client(), student, organizer, admin):
+        assert browser.get(f"/events/{event_id}").status_code == 404
+    assert student.get(register_url).status_code == 404
+    assert student.post(register_url, data=stale_registration.fields(register_url)).status_code == 404
+    assert organizer.get(edit_url).status_code == 409
+    assert organizer.post(edit_url, data={
+        **stale_editor.fields(edit_url), **event_fields(title="Attempt to restore"),
+    }).status_code == 409
+    organizer.post(cancel_url, data=stale_editor.fields(cancel_url))
+    with app.app_context():
+        assert db.session.get(Event, event_id).status == "removed"
+        assert db.session.get(Registration, registration_id).status == "cancelled"
+
+    for path in ("/my-registrations", f"/my-registrations/{registration_id}", report_url):
+        receipt = Page(student.get(path))
+        assert "Flow Reported Event" not in receipt.text
+        assert "Learning Commons" not in receipt.text
+        assert f"/events/{event_id}" not in receipt.links
+        assert note not in receipt.text
+    receipt = Page(student.get(f"/my-registrations/{registration_id}"))
+    assert "administrator removed this event" in receipt.text
+    assert "no longer active" in receipt.text
+    assert "Flow Reported Event" in Page(admin.get(review_url)).text
+    assert "Flow Reported Event" in Page(organizer.get(f"/organizer/events/{event_id}/stats")).text
+    assert edit_url not in Page(organizer.get("/organizer/")).links
+    assert_counts(organizer, event_id, 0, publicly_visible=False)

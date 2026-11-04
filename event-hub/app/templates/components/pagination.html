@@ -1,0 +1,13 @@
+{% from 'components/ui.html' import icon %}
+{% macro page_navigation(pagination, label='Results pages') -%}
+{% if pagination and pagination.pages > 1 %}
+<nav class="section-heading inline" aria-label="{{ label }}">
+  <p class="small muted">Showing {{ pagination.first }}–{{ pagination.last }} of {{ pagination.total }}</p>
+  <div class="inline">
+    {% if pagination.previous_url %}<a class="button button-secondary button-small" href="{{ pagination.previous_url }}" rel="prev" aria-label="Previous page">{{ icon('arrow-left') }} Previous</a>{% endif %}
+    <span class="small muted" aria-current="page">Page {{ pagination.page }} of {{ pagination.pages }}</span>
+    {% if pagination.next_url %}<a class="button button-secondary button-small" href="{{ pagination.next_url }}" rel="next" aria-label="Next page">Next {{ icon('arrow-right') }}</a>{% endif %}
+  </div>
+</nav>
+{% endif %}
+{%- endmacro %}

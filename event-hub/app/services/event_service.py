@@ -1,10 +1,10 @@
 # app/services/event_service.py
 # Event form checks for create and edit. UC-006, UC-007.
 from datetime import datetime
-from decimal import Decimal, InvalidOperation
 from zoneinfo import ZoneInfo
 
 from app.models.event import CATEGORY_ART
+from app.services.price_service import parse_price_cents
 
 CATEGORIES = list(CATEGORY_ART)
 PACIFIC = ZoneInfo("America/Los_Angeles")
@@ -64,12 +64,11 @@ def validate_event_form(form, event=None):
 
     price_cents = None
     try:
-        price = Decimal(form.get("price", ""))
-        if not price.is_finite() or price < 0 or price > 9999:
-            raise InvalidOperation
-        price_cents = int((price * 100).to_integral_value())
-    except InvalidOperation:
-        errors["price"] = "Enter a price from 0 to 9,999. Use 0 for a free event."
+        price_cents = parse_price_cents(form.get("price", ""))
+        if 0 < price_cents < 50:
+            errors["price"] = "Paid tickets must cost at least $0.50. Use 0 for a free event."
+    except ValueError as error:
+        errors["price"] = f"{error} Use 0 for a free event."
     if event is not None and price_cents is not None and price_cents != event.price_cents:
         if event.registrations:
             errors["price"] = "The price can't change after people have registered."
@@ -83,9 +82,10 @@ def validate_event_form(form, event=None):
         errors["capacity"] = "Enter a capacity from 1 to 10,000."
         capacity = None
     if event is not None and capacity is not None:
-        taken = event.active_registration_count()
+        from app.services.event_write_service import occupied_seats
+        taken = occupied_seats(event.id)
         if capacity < taken:
-            errors["capacity"] = f"{taken} people are already confirmed. Capacity can't be lower."
+            errors["capacity"] = f"{taken} seats are confirmed or held at checkout. Capacity can't be lower."
 
     data = {
         "title": title,

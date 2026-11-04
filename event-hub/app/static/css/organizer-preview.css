@@ -80,15 +80,17 @@
 }
 .cover-upload-empty {
   display:flex;
-  flex-direction:column;
+  flex-direction:row;
   align-items:center;
+  justify-content:center;
   gap:10px;
-  padding:32px 20px 24px;
+  padding:20px 20px 0;
   text-align:center;
 }
 .cover-upload-empty>.icon {
-  width:42px;
-  height:42px;
+  width:24px;
+  height:24px;
+  flex-shrink:0;
   color:var(--red);
   margin-bottom:4px;
 }
@@ -435,9 +437,8 @@
   .organizer-dashboard .organizer-event-actions { grid-column:1 / -1; padding:0; flex-direction:row; gap:14px; width:100%; }
 }
 
-/* White copy remains readable over the lightest part of the campus artwork. */
 .account-auth .auth-story:after {
-  background:linear-gradient(0deg,#3f2523f0,#3f2523a6);
+  background:none;
 }
 
 .table-mobile-label { display:none; }

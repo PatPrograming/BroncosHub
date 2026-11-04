@@ -1,38 +1,39 @@
 {% extends "base.html" %}
 {% from "components/ui.html" import icon, badge, empty_state %}
-{% block title %}Organizer studio{% endblock %}
+{% from 'components/pagination.html' import page_navigation %}
+{% block title %}Organizer dashboard{% endblock %}
 {% block content %}
 {% set can_manage = event_management_available|default(true) %}
 {% set can_browse = event_browsing_available|default(true) %}
 {% set has_revenue = stats.revenue_available|default(true) %}
 <section class="container page-section organizer-dashboard">
   <div class="page-heading">
-    <div><p class="eyebrow">Organizer studio</p><h1 class="page-title">Good things start with you.</h1><p class="muted">A little planning. A lot of campus memories.</p></div>
-    {% if can_manage %}<a class="button button-primary" href="/organizer/events/new">{{ icon('plus') }} Create an event</a>{% endif %}
+    <div><h1 class="page-title">Organizer dashboard</h1></div>
+    {% if can_manage %}<div class="form-actions">{% if not preview_mode and not organizer_demo|default(false) %}<a class="button button-secondary" href="/organizer/payments">Event payments {{ icon('credit-card') }}</a>{% endif %}<a class="button button-primary" href="/organizer/events/new">{{ icon('plus') }} Create an event</a></div>{% endif %}
   </div>
   <div class="stat-grid" aria-label="Your event overview">
     <div class="stat-card"><span class="muted small">Published events</span><strong>{{ stats.events_count }}</strong><span class="small">Past and upcoming</span></div>
     <div class="stat-card"><span class="muted small">Confirmed registrations</span><strong>{{ stats.registrations }}</strong><span class="small">Across all your events</span></div>
-    <div class="stat-card"><span class="muted small">Confirmed revenue</span><strong{% if not has_revenue %} aria-label="Not available"{% endif %}>{{ stats.revenue_label }}</strong><span class="small">{{ 'Successful payments only' if has_revenue else 'Payments aren’t available yet' }}</span></div>
+    <div class="stat-card"><span class="muted small">Successful payments</span><strong{% if not has_revenue %} aria-label="Not available"{% endif %}>{{ stats.revenue_label }}</strong><span class="small">{% if not has_revenue or payment_provider|default('mock') == 'disabled' %}Online payments aren’t set up{% elif payment_provider|default('mock') == 'mock' %}Mock checkout · no real charges{% elif payment_provider == 'stripe' and not payment_live %}Stripe test payments · no real charges{% else %}Before processing fees{% endif %}</span></div>
   </div>
   <div class="workspace-layout organizer-workspace">
     <div class="workspace-main stack">
-      <div class="section-heading"><h2 class="section-title">Your events</h2><span class="small muted">{{ events|length }} total</span></div>
+      <div class="section-heading"><h2 class="section-title">Your events</h2><span class="small muted">{{ pagination.total if pagination is defined else events|length }} total</span></div>
       {% for event in events %}
-      {% set event_url = '/events/' ~ event.id if can_browse else '/organizer/events/' ~ event.id ~ '/stats' %}
+      {% set event_url = '/events/' ~ event.id if can_browse and event.status != 'removed' else '/organizer/events/' ~ event.id ~ '/stats' %}
       <article class="card organizer-event">
         <a class="organizer-event-art" href="{{ event_url }}" tabindex="-1" aria-hidden="true"><img src="{{ event.cover_url|default('', true) or url_for('static', filename='images/' ~ event.art) }}" alt="" loading="lazy"></a>
         <div class="organizer-event-body stack-sm">
-          <div class="inline"><span class="eyebrow">{{ event.category }}</span>{{ badge(event.status) }}</div>
+          <div class="inline"><span class="small muted">{{ event.category }}</span>{{ badge(event.status) }}</div>
           <h3><a href="{{ event_url }}">{{ event.title }}</a></h3>
           <p class="muted small">{{ event.date_label }} · {{ event.time_label }}</p>
           <p class="small">{{ icon('pin') }} {{ event.location }}</p>
           <div class="organizer-capacity">
-            {% if event.status != 'cancelled' %}
+            {% if event.status not in ['cancelled', 'removed'] %}
             {% if event.capacity is none %}
             <div class="organizer-capacity-label"><span><strong>{{ event.registrations_count }}</strong> confirmed</span><span class="muted">No capacity limit</span></div>
             {% else %}
-            <div class="organizer-capacity-label"><span><strong>{{ event.registrations_count }}</strong> / {{ event.capacity }} confirmed</span><span class="muted">{{ event.spots_left }} spots left</span></div>
+            <div class="organizer-capacity-label"><span><strong>{{ event.registrations_count }}</strong> / {{ event.capacity }} confirmed</span><span class="muted">{{ event.spots_left }} {{ 'spot' if event.spots_left == 1 else 'spots' }} left</span></div>
             <div class="progress-track" role="img" aria-label="{{ event.registrations_count }} of {{ event.capacity }} places registered"><span class="progress-fill" style="width: {{ [100, (event.registrations_count / event.capacity * 100) if event.capacity else 0]|min }}%"></span></div>
             {% endif %}
             {% else %}<p class="small muted">Registration closed · {{ event.registrations_count }} confirmed {{ 'registration' if event.registrations_count == 1 else 'registrations' }} on record</p>{% endif %}
@@ -40,18 +41,19 @@
         </div>
         <div class="organizer-event-actions stack-sm">
           <a class="button button-secondary button-small" href="/organizer/events/{{ event.id }}/stats">{{ icon('chart') }} Statistics</a>
-          {% if can_manage and event.status != 'cancelled' %}<a class="button button-ghost button-small" href="/organizer/events/{{ event.id }}/edit">{{ icon('edit') }} Edit event</a>{% elif can_browse %}<a class="button button-ghost button-small" href="/events/{{ event.id }}">View event {{ icon('arrow-up-right') }}</a>{% endif %}
+          {% if can_manage and event.status not in ['cancelled', 'removed'] %}<a class="button button-ghost button-small" href="/organizer/events/{{ event.id }}/edit">{{ icon('edit') }} Edit event</a>{% elif can_browse and event.status != 'removed' %}<a class="button button-ghost button-small" href="/events/{{ event.id }}">View event {{ icon('arrow-up-right') }}</a>{% endif %}
         </div>
       </article>
       {% else %}
       {% if can_manage %}
-      {{ empty_state('Your next great idea belongs here.', 'Create your first event and give Broncos something to look forward to.', '/organizer/events/new', 'Create your first event') }}
+      {{ empty_state('No events yet', 'Create an event to start accepting registrations.', '/organizer/events/new', 'Create an event') }}
       {% else %}
-      {{ empty_state('Your next great idea belongs here.', 'Once an event is added to your account, you’ll find its registrations and statistics here.') }}
+      {{ empty_state('No events yet', 'Events you organize will appear here.') }}
       {% endif %}
       {% endfor %}
+      {{ page_navigation(pagination|default(none), 'Organizer event pages') }}
     </div>
-    <aside class="organizer-footer-note"><p>{{ icon('info') }} Counts include confirmed registrations across all your events, including past and cancelled events. Pending and cancelled registrations are excluded. These are sign-ups, not check-ins.</p>{% if can_browse %}<a class="link" href="/events">Explore campus events {{ icon('arrow-up-right') }}</a>{% endif %}</aside>
+    <p class="small muted">Counts include confirmed registrations, not attendance. Payment totals exclude pending, failed and refunded payments, including refunds in progress.</p>
   </div>
 </section>
 {% endblock %}
