@@ -22,8 +22,8 @@
 {% if preview_mode %}
 <aside class="preview-bar" aria-label="UI preview controls"><div class="container preview-inner">
   <span><span class="preview-dot"></span>UI preview <span class="preview-description">· Fictional sample events</span></span>
-  <details class="preview-menu"><summary>View as {{ user.role|default('guest')|title }} {{ icon('chevron-down') }}</summary><div class="preview-options">
-    {% for role in ['student','organizer','admin','guest'] %}<a href="/preview/role/{{ role }}">{{ role|title }} view</a>{% endfor %}<a href="/preview/reset">Reset sample data</a>
+  <details class="preview-menu"><summary>Demo: {{ 'Admin' if user and user.role == 'admin' else ('Student' if user else 'Signed out') }} {{ icon('chevron-down') }}</summary><div class="preview-options">
+    <a href="/preview/role/student">Student</a><a href="/preview/role/admin">Admin</a><a href="/preview/role/guest">Signed out</a><a href="/preview/reset">Reset sample data</a>
   </div></details>
 </div></aside>
 {% endif %}
