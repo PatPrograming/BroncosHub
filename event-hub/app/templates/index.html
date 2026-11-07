@@ -12,7 +12,9 @@
       <a class="button button-primary" href="/events">Browse events {{ icon('arrow-right') }}</a>
       {% if not user %}<a class="button button-secondary" href="/login">Sign in with Google</a>{% elif user.can_organize %}<a class="link" href="/organizer/events/new">Create an event {{ icon('plus') }}</a>{% endif %}
     </div>
+    {% if support_available|default(false) %}
     <p class="home-legal-links small muted">Read our <a class="link" href="{{ url_for('support.privacy') }}">privacy policy</a> and <a class="link" href="{{ url_for('support.terms') }}">terms of service</a>.</p>
+    {% endif %}
   </section>
 
   <header class="home-heading">
