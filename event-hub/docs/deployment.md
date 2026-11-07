@@ -1,6 +1,6 @@
 # Deploying BroncosHub
 
-This is the setup for the real Flask app. The code and local tests are prepared; a hosted site, Google configuration, Stripe account setup, and a real Stripe sandbox walkthrough have not been verified by those tests.
+The real Flask app is deployed at **https://broncoshub.onrender.com**. The initial Render deployment and database health check succeeded on November 6, 2026. Google sign-in and Stripe sandbox/live payments remain unconfigured and unverified.
 
 ## Free Render website with Supabase storage
 
@@ -38,7 +38,7 @@ Keep `PAYMENT_PROVIDER=disabled` for the initial deployment. The payment recover
 
 ## Google and account roles
 
-A team member must finish Google OAuth configuration before students can sign in. The app can deploy before those credentials are available. Once Render shows the live website address, give Patrick that address and the exact HTTPS callback `https://YOUR-HOST/auth/google/callback` for his web application OAuth client. Replace `YOUR-HOST` with the actual deployed hostname; do not send a placeholder as a working URL. Set `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` privately in Render; keep `ALLOWED_EMAIL_DOMAIN=scu.edu`.
+A team member must finish Google OAuth configuration before students can sign in. Patrick can use the origin `https://broncoshub.onrender.com` and the exact authorized redirect URI `https://broncoshub.onrender.com/auth/google/callback` for his web application OAuth client. Set `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` privately in Render; keep `ALLOWED_EMAIL_DOMAIN=scu.edu`. These addresses are ready for configuration, but a real Google sign-in still needs testing after the credentials are added.
 
 Every verified SCU account can host events and manage only its own listings and statistics. New accounts remain students; no organizer-role assignment is needed. Paid events additionally require completed Stripe setup.
 

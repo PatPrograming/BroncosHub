@@ -254,4 +254,3 @@ def test_report_loaded_before_removal_cannot_be_inserted_after_removal(pg_app, m
         assert db.session.scalar(db.select(db.func.count()).select_from(Report).where(
             Report.event_id == event_id, Report.status == "pending"
         )) == 0
-

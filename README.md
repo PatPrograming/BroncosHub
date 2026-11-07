@@ -4,6 +4,8 @@ Campus events for SCU students. Built by Jaden Hill, Patrick Zhang, and Ethan Ca
 
 The app lives in [`event-hub/`](event-hub). Follow the [setup and testing instructions](event-hub/README.md) to run it with Python 3.12+ at **http://127.0.0.1:5080**. Keep your existing `.env` settings when updating.
 
-Every verified SCU user can host and manage their own events. Admin moderation is separate, and paid events require Stripe setup. The free hosting configuration uses Render with Supabase for saved records and private images. Google sign-in credentials, Stripe verification, and the public deployment still need verification; see the [deployment guide](event-hub/docs/deployment.md).
+The website is deployed at **https://broncoshub.onrender.com** on Render Free, with Supabase for saved records and private images. Google sign-in and Stripe payments still need configuration and live verification; see the [deployment guide](event-hub/docs/deployment.md).
+
+Every verified SCU user can host and manage their own events. Admin moderation is separate, and paid events require Stripe setup.
 
 For the local app and fictional-data previews, see [START HERE](START%20HERE.md).

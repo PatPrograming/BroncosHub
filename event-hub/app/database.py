@@ -43,4 +43,3 @@ def initialize_database(app):
         connection.execute(text(f"REVOKE ALL ON SCHEMA {schema_sql} FROM {roles_sql}"))
         connection.execute(text(f"REVOKE ALL ON ALL TABLES IN SCHEMA {schema_sql} FROM {roles_sql}"))
         connection.execute(text(f"REVOKE ALL ON ALL SEQUENCES IN SCHEMA {schema_sql} FROM {roles_sql}"))
-
