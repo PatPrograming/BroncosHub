@@ -4,14 +4,16 @@ This is the setup for the real Flask app. The code and local tests are prepared;
 
 ## One Render service with persistent storage
 
-The repository's `render.yaml` describes a paid Starter web service and a 1 GB persistent disk. Review Render's current price before creating it. Keeping this file in Git does not create a service.
+The repository's `render.yaml` describes a paid 0.5 CPU / 512 MB web service (`0.5c-512mb`) and a 1 GB persistent disk. Render lists these at $7/month and $0.25/month respectively as of November 6, 2026, before tax or additional usage. Review the final cost before creating it. Keeping this file in Git does not create a service.
 
 Connect the team repository in Render and use its blueprint. It sets Python 3.12.13, root directory `event-hub`, build command `pip install -r requirements-production.txt`, start command `python tools/start_production.py`, and health check `/healthz`. The persistent paths are:
 
 - Database: `sqlite:////var/data/broncoshub.db`.
 - Covers: `/var/data/uploads/event-covers`.
 
-The blueprint sets `APP_ENV=production`, a generated secret, and `TRUST_PROXY=true`. Payments start disabled; automatic Git deployments are off. Set `TRUSTED_HOSTS` to the real hostname only, such as `your-site.onrender.com`. Set `PUBLIC_BASE_URL` to its complete HTTPS origin, such as `https://your-site.onrender.com`, without a path or trailing slash. These are placeholders, not existing deployments.
+The blueprint sets `APP_ENV=production`, a generated secret, and `TRUST_PROXY=true`. Payments start disabled; automatic Git deployments are off. The app uses Render's assigned `RENDER_EXTERNAL_HOSTNAME` and matching HTTPS `RENDER_EXTERNAL_URL` when running on Render, so the first deployment does not need a hostname entered in advance. It never derives trusted hosts from browser requests.
+
+For a custom domain, explicitly set `TRUSTED_HOSTS` to the real hostname (or comma-separated hostnames) and `PUBLIC_BASE_URL` to its complete HTTPS origin, without a path or trailing slash. Explicit settings take precedence over Render's defaults. Do not replace them with a wildcard.
 
 Keep one web instance. The start script initializes the database, runs Gunicorn with one worker/four threads, and starts payment recovery on the same disk. If either child exits, both stop so the hosting service can restart them together. Do not run several independent SQLite instances or a separate worker with a different filesystem.
 
@@ -19,7 +21,7 @@ Production requires `APP_ENV=production`. Do not deploy the Flask debug server o
 
 ## Google and account roles
 
-A team member must finish Google OAuth configuration before students can sign in. Add the actual HTTPS callback `https://YOUR-HOST/auth/google/callback` to that OAuth client. Set `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` privately in Render; keep `ALLOWED_EMAIL_DOMAIN=scu.edu`.
+A team member must finish Google OAuth configuration before students can sign in. The app can deploy before those credentials are available. Once Render shows the live website address, give Patrick that address and the exact HTTPS callback `https://YOUR-HOST/auth/google/callback` for his web application OAuth client. Replace `YOUR-HOST` with the actual deployed hostname; do not send a placeholder as a working URL. Set `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` privately in Render; keep `ALLOWED_EMAIL_DOMAIN=scu.edu`.
 
 Every verified SCU account can host events and manage only its own listings and statistics. New accounts remain students; no organizer-role assignment is needed. Paid events additionally require completed Stripe setup.
 
@@ -107,3 +109,5 @@ On the hosted sandbox, verify Google sign-in, organizer onboarding, successful c
 Give teammates the repository link and this document. Share access through the team's Render/Stripe/Google permissions, not by sending secret keys, `.env`, database exports, or payment details in chat.
 
 Primary references checked November 4, 2026: [Stripe integration design](https://docs.stripe.com/connect/design-an-integration), [Accounts v2 configuration](https://docs.stripe.com/connect/accounts-v2/connected-account-configuration), [onboarding links](https://docs.stripe.com/api/v2/core/account-links/create), [direct charges](https://docs.stripe.com/connect/direct-charges), [webhooks](https://docs.stripe.com/webhooks), and [refund behavior](https://docs.stripe.com/refunds). Hosting commands/defaults come from this repository's `render.yaml`, `tools/start_production.py`, `tools/payment_worker.py`, and `gunicorn.conf.py`; review the actual hosting setup before applying them.
+
+Hosting references checked November 6, 2026: [Render pricing](https://render.com/pricing), [persistent disks](https://render.com/docs/disks), [Blueprint fields](https://render.com/docs/blueprint-spec), and [default environment variables](https://render.com/docs/environment-variables).

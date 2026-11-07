@@ -4,7 +4,7 @@ services:
   - type: web
     name: broncoshub
     runtime: python
-    plan: starter
+    plan: 0.5c-512mb
     region: oregon
     rootDir: event-hub
     buildCommand: pip install -r requirements-production.txt
@@ -28,10 +28,6 @@ services:
         value: /var/data/uploads/event-covers
       - key: TRUST_PROXY
         value: 'true'
-      - key: TRUSTED_HOSTS
-        sync: false
-      - key: PUBLIC_BASE_URL
-        sync: false
       - key: PAYMENT_PROVIDER
         value: disabled
       - key: STRIPE_LIVE_MODE

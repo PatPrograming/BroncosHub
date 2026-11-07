@@ -38,8 +38,9 @@ class Provider:
         self.create_calls = []
 
     def network_boundary(self):
-        # A second SQLite writer must work while any provider request is running.
-        connection = sqlite3.connect(self.path, timeout=0.05)
+        # Allow another thread's short write to finish. A lock held by this
+        # caller cannot be released during the probe, so it still fails.
+        connection = sqlite3.connect(self.path, timeout=1)
         try:
             connection.execute("BEGIN IMMEDIATE")
             connection.rollback()
@@ -180,6 +181,16 @@ def webhook(app, payload, *, valid=True):
 def completed(session):
     return {"id": "evt_test", "object": "event", "type": "checkout.session.completed",
             "account": "acct_organizer", "data": {"object": session}}
+
+
+def test_provider_probe_rejects_callers_own_write_lock(paid_app):
+    app, provider = paid_app
+    with app.app_context():
+        with event_write(1):
+            with pytest.raises(sqlite3.OperationalError, match="database is locked"):
+                provider.network_boundary()
+        # Releasing the caller's lock makes the same probe succeed.
+        provider.network_boundary()
 
 
 def test_two_independent_buyers_reserve_only_one_seat(paid_app):
