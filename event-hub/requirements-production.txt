@@ -1,3 +1,5 @@
 -r requirements.txt
 # Gunicorn is used by the deployed app; run.py stays a local development entry.
 gunicorn==26.2.0
+# PostgreSQL driver for the hosted database; local SQLite remains supported.
+psycopg[binary]==3.3.8

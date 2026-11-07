@@ -2,22 +2,39 @@
 
 This is the setup for the real Flask app. The code and local tests are prepared; a hosted site, Google configuration, Stripe account setup, and a real Stripe sandbox walkthrough have not been verified by those tests.
 
-## One Render service with persistent storage
+## Free Render website with Supabase storage
 
-The repository's `render.yaml` describes a paid 0.5 CPU / 512 MB web service (`0.5c-512mb`) and a 1 GB persistent disk. Render lists these at $7/month and $0.25/month respectively as of November 6, 2026, before tax or additional usage. Review the final cost before creating it. Keeping this file in Git does not create a service.
+The repository's `render.yaml` uses one **Render Free** web service. Records live in **Supabase PostgreSQL**, and event covers live in a **private Supabase Storage bucket**. Render's local filesystem is temporary; the hosted app must not use it for records or uploads. The blueprint requires external storage and refuses to start with local SQLite or local covers.
 
-Connect the team repository in Render and use its blueprint. It sets Python 3.12.13, root directory `event-hub`, build command `pip install -r requirements-production.txt`, start command `python tools/start_production.py`, and health check `/healthz`. The persistent paths are:
+The free Supabase project is `BroncosHub` (`fremmuavjhdmpdwdyoer`) in the existing personal organization. Its project URL is `https://fremmuavjhdmpdwdyoer.supabase.co`. The app uses the dedicated `broncoshub_app` database role and private `broncoshub` schema, not the Supabase anonymous browser role. App tables are not exposed through a public Data API schema. Flask checks the signed-in user's permissions before reading records or serving cover images.
 
-- Database: `sqlite:////var/data/broncoshub.db`.
-- Covers: `/var/data/uploads/event-covers`.
+Connect the team repository in Render and use its blueprint. It sets Python 3.12.13, root directory `event-hub`, build command `pip install -r requirements-production.txt`, start command `python tools/start_production.py`, and health check `/healthz`. Enter these values in Render's private environment settings:
 
-The blueprint sets `APP_ENV=production`, a generated secret, and `TRUST_PROXY=true`. Payments start disabled; automatic Git deployments are off. The app uses Render's assigned `RENDER_EXTERNAL_HOSTNAME` and matching HTTPS `RENDER_EXTERNAL_URL` when running on Render, so the first deployment does not need a hostname entered in advance. It never derives trusted hosts from browser requests.
+| Variable | Setting |
+| --- | --- |
+| `DATABASE_URL` | PostgreSQL session-pooler connection URL containing the app role's password |
+| `SUPABASE_URL` | `https://fremmuavjhdmpdwdyoer.supabase.co` |
+| `SUPABASE_SECRET_KEY` | Server-only Supabase secret key for private image storage |
+
+The database URL uses the `postgresql+psycopg` scheme, host `aws-0-us-west-1.pooler.supabase.com`, port `5432`, database `postgres`, and username `broncoshub_app.fremmuavjhdmpdwdyoer`. Keep the password out of Git, documents and messages. The app verifies the database server's TLS certificate using the bundled Supabase CA certificate. Do not disable certificate verification to fix a connection error.
+
+The blueprint already sets `DATABASE_SCHEMA=broncoshub`, `COVER_STORAGE_BACKEND=supabase`, `SUPABASE_STORAGE_BUCKET=event-covers`, and `REQUIRE_EXTERNAL_STORAGE=true`. Provision the private schema and app role before starting a new database. The `event-covers` bucket must remain private, with a 5 MB file limit and `image/webp` allowed. The application validates JPG/PNG/WebP uploads and converts them to WebP before storage. Never expose the storage secret to browser code or make the bucket public to fix image access.
+
+The blueprint also sets `APP_ENV=production`, a generated session secret, and `TRUST_PROXY=true`. Payments start disabled; automatic Git deployments are off. The app uses Render's assigned `RENDER_EXTERNAL_HOSTNAME` and matching HTTPS `RENDER_EXTERNAL_URL`, so the first deployment does not need a hostname entered in advance. It never derives trusted hosts from browser requests.
 
 For a custom domain, explicitly set `TRUSTED_HOSTS` to the real hostname (or comma-separated hostnames) and `PUBLIC_BASE_URL` to its complete HTTPS origin, without a path or trailing slash. Explicit settings take precedence over Render's defaults. Do not replace them with a wildcard.
 
-Keep one web instance. The start script initializes the database, runs Gunicorn with one worker/four threads, and starts payment recovery on the same disk. If either child exits, both stop so the hosting service can restart them together. Do not run several independent SQLite instances or a separate worker with a different filesystem.
+Keep one web instance for this setup. The start script initializes the database, runs Gunicorn with one worker/four threads, and starts payment recovery. If either child exits, both stop so Render can restart them together. Database records and images remain outside the web process and survive its restarts and redeployments.
 
 Production requires `APP_ENV=production`. Do not deploy the Flask debug server or either preview runner. `run.py` is for local development on port 5080; debug mode is off unless explicitly enabled. Preview shortcuts and fictional accounts never belong on the public site.
+
+### Free-plan limits
+
+As checked November 6, 2026, Render Free sleeps after 15 minutes without inbound traffic and has a shared allowance of 750 free instance hours per workspace each month. The first request after sleep can be slow. Free services do not provide a persistent disk or an interactive hosting shell. Do not use Render's free PostgreSQL service for this setup; it expires after 30 days.
+
+Supabase Free includes a 500 MB database, 1 GB file storage and 5 GB egress. A project can pause after a week of inactivity, and free projects do not include automatic database backups. Stay within those limits and keep separate backups. Persistent external storage protects against a Render restart; it is not a backup or an always-on availability guarantee.
+
+Keep `PAYMENT_PROVIDER=disabled` for the initial deployment. The payment recovery process sleeps along with the free web service, so this configuration does not provide continuous payment recovery. Review hosting availability and complete the Stripe checks below before enabling real sales.
 
 ## Google and account roles
 
@@ -25,7 +42,7 @@ A team member must finish Google OAuth configuration before students can sign in
 
 Every verified SCU account can host events and manage only its own listings and statistics. New accounts remain students; no organizer-role assignment is needed. Paid events additionally require completed Stripe setup.
 
-Admin moderation is separate. After a moderator signs in, a trusted operator can grant admin access in the hosting shell:
+Admin moderation is separate. After a moderator signs in, a trusted operator can grant admin access from a local checkout connected to the hosted database. Render Free has no interactive shell. Install `requirements-production.txt` and load the production environment settings privately before running this command; otherwise the command could target the local database. Outside Render, set `TRUSTED_HOSTS` and `PUBLIC_BASE_URL` explicitly to the live site, and set `PYTHON_DOTENV_DISABLED=1` to avoid loading local development settings:
 
 ```sh
 flask --app wsgi:app user-role moderator@scu.edu --role admin
@@ -86,19 +103,39 @@ Check hosting logs when recovery fails. Unresolved entries rotate through the qu
 
 ## Data and updates
 
-Keep the database and covers together on persistent storage. Startup adds missing tables and applies additive SQLite upgrades without resetting records. Before schema changes, make a verified offline backup while both website and payment worker are stopped:
+For the hosted app, the PostgreSQL database and private Storage bucket are the source of saved data. Startup creates missing app tables inside the already provisioned private schema. It does not move a local SQLite database or upload existing local covers, and it is not a general schema-migration system. Review and back up data before future schema changes.
+
+### Hosted PostgreSQL and Storage backups
+
+Supabase Free does not include automatic database backups. Before a significant update, stop app writes and payment recovery, export the `broncoshub` schema with PostgreSQL's `pg_dump`, and download the files from the private `event-covers` bucket. A database dump alone does **not** contain the image files.
+
+An operator can configure a private PostgreSQL connection service named `broncoshub` using the session-pooler settings above, TLS verification, and a password file readable only by that operator. With that connection configured, a database export is:
 
 ```sh
-python tools/data_backup.py backup --database /var/data/broncoshub.db --covers /var/data/uploads/event-covers --output /var/data/broncoshub-backup.zip --app-stopped
+pg_dump --dbname=service=broncoshub --schema=broncoshub --format=custom --file=/private/backup/location/broncoshub.dump
 ```
 
-Use a new backup filename each time and keep a private copy outside the service disk. The archive includes the database and referenced cover files, not secrets. Restore to a new directory, never over live files:
+Use a PostgreSQL client compatible with the server version. Keep the dump and an inventory/copy of the bucket's files together in a private location outside Render and Supabase. Do not place either in Git or send student data to the group chat. Restore into a separate database and private bucket, then check account/event counts, registrations, and referenced images before changing the application's connection settings. A backup is not verified until the restore has been checked.
+
+`tools/data_backup.py` supports **local SQLite and local cover files only**. It does not back up hosted PostgreSQL or the Supabase bucket.
+
+### Local SQLite backups
+
+Local development still defaults to `instance/broncoshub.db` and `instance/uploads/event-covers`. Startup applies the existing additive SQLite upgrades without resetting records. Stop both the local website and payment worker before making a backup:
 
 ```sh
-python tools/data_backup.py restore /path/to/broncoshub-backup.zip /path/to/new-restore
+python tools/data_backup.py backup --database instance/broncoshub.db --covers instance/uploads/event-covers --output /private/backup/location/broncoshub-local.zip --app-stopped
 ```
 
-Verify restored data and images before switching the stopped service to those paths. **Restoring SQLite does not rewind Stripe.** Keep `PAYMENT_PROVIDER=disabled` while reviewing post-backup charges/refunds and planning reconciliation. Do not reopen sales from an old snapshot until those external transactions have been reconciled.
+Use a new filename each time. The archive includes the database and referenced local cover files, not secrets. Restore to a new directory, never over live files:
+
+```sh
+python tools/data_backup.py restore /path/to/broncoshub-local.zip /path/to/new-restore
+```
+
+Verify the restored database and images before switching the stopped local app to those paths.
+
+**Restoring any database does not rewind Stripe.** Keep payments disabled while reviewing post-backup charges/refunds and planning reconciliation. Do not reopen sales from an old snapshot until those external transactions have been reconciled.
 
 ## Before live use
 
@@ -110,4 +147,4 @@ Give teammates the repository link and this document. Share access through the t
 
 Primary references checked November 4, 2026: [Stripe integration design](https://docs.stripe.com/connect/design-an-integration), [Accounts v2 configuration](https://docs.stripe.com/connect/accounts-v2/connected-account-configuration), [onboarding links](https://docs.stripe.com/api/v2/core/account-links/create), [direct charges](https://docs.stripe.com/connect/direct-charges), [webhooks](https://docs.stripe.com/webhooks), and [refund behavior](https://docs.stripe.com/refunds). Hosting commands/defaults come from this repository's `render.yaml`, `tools/start_production.py`, `tools/payment_worker.py`, and `gunicorn.conf.py`; review the actual hosting setup before applying them.
 
-Hosting references checked November 6, 2026: [Render pricing](https://render.com/pricing), [persistent disks](https://render.com/docs/disks), [Blueprint fields](https://render.com/docs/blueprint-spec), and [default environment variables](https://render.com/docs/environment-variables).
+Hosting references checked November 6, 2026: [Render Free limits](https://render.com/docs/free), [Blueprint fields](https://render.com/docs/blueprint-spec), [default environment variables](https://render.com/docs/environment-variables), [Supabase pricing and free limits](https://supabase.com/pricing), [PostgreSQL connections](https://supabase.com/docs/guides/database/connecting-to-postgres), and [private Storage buckets](https://supabase.com/docs/guides/storage/buckets/fundamentals).

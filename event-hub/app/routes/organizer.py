@@ -11,8 +11,11 @@ from app.extensions import db
 from app.models import Event, Registration
 from app.pagination import paginate
 from app.security import csrf_token, validate_csrf
+from app.services import cover_service
 from app.services.event_service import CATEGORIES, campus_now, validate_event_form
-from app.services.cover_service import InvalidCover, commit_event_with_cover, normalize_cover
+from app.services.cover_service import (
+    InvalidCover, commit_event_with_cover, discard_cover, normalize_cover,
+)
 from app.services.stats_service import owner_dashboard_statistics, event_statistics
 from app.services.event_write_service import event_write
 
@@ -168,33 +171,13 @@ def edit_event(event_id):
         image_errors = {}
         image_data, remove = _cover_input(image_errors)
         payment_error = _paid_event_error(request.form)
-        with event_write(event_id) as event:
-            if event is None or event.organizer_id != current_user.id:
-                abort(404)
-            if event.is_removed:
-                return render_template(
-                    "errors/error.html", status=409, title="This event was removed",
-                    message="An administrator removed this event. It can no longer be edited.",
-                    return_url=url_for("organizer.dashboard"), return_label="Organizer dashboard",
-                ), 409
-            if event.is_cancelled:
-                flash("Cancelled events can't be edited.", "warning")
-                return redirect(url_for("organizer.dashboard"))
-            data, errors = validate_event_form(request.form, event=event)
-            errors.update(image_errors)
-            if payment_error:
-                errors["price"] = payment_error
-            if errors:
-                if image_data is not None:
-                    errors["cover_image"] = "Choose your cover again after fixing the details above."
-                return render_template(
-                    "organizer/event_form.html", event=event.event_view(), categories=CATEGORIES,
-                    form_values=request.form, errors=errors, **_page_context(),
-                ), 422
-            for field, value in data.items():
-                setattr(event, field, value)
+        # Remote uploads can take seconds. Finish them before locking the event;
+        # a rejected/stale edit discards its unused object in the finally block.
+        prepared_cover = None
+        cover_saved = False
+        if image_data is not None and not image_errors and not payment_error:
             try:
-                commit_event_with_cover(event, image_data, remove=remove)
+                prepared_cover = cover_service.store_cover(image_data)
             except OSError:
                 db.session.rollback()
                 return render_template(
@@ -203,6 +186,46 @@ def edit_event(event_id):
                     errors={"cover_image": "We couldn't save your image. Please try again."},
                     **_page_context(),
                 ), 503
+        try:
+            with event_write(event_id) as event:
+                if event is None or event.organizer_id != current_user.id:
+                    abort(404)
+                if event.is_removed:
+                    return render_template(
+                        "errors/error.html", status=409, title="This event was removed",
+                        message="An administrator removed this event. It can no longer be edited.",
+                        return_url=url_for("organizer.dashboard"), return_label="Organizer dashboard",
+                    ), 409
+                if event.is_cancelled:
+                    flash("Cancelled events can't be edited.", "warning")
+                    return redirect(url_for("organizer.dashboard"))
+                data, errors = validate_event_form(request.form, event=event)
+                errors.update(image_errors)
+                if payment_error:
+                    errors["price"] = payment_error
+                if errors:
+                    if image_data is not None:
+                        errors["cover_image"] = "Choose your cover again after fixing the details above."
+                    return render_template(
+                        "organizer/event_form.html", event=event.event_view(), categories=CATEGORIES,
+                        form_values=request.form, errors=errors, **_page_context(),
+                    ), 422
+                for field, value in data.items():
+                    setattr(event, field, value)
+                try:
+                    commit_event_with_cover(event, remove=remove, stored_cover=prepared_cover)
+                    cover_saved = True
+                except OSError:
+                    db.session.rollback()
+                    return render_template(
+                        "organizer/event_form.html", event=event.event_view(), categories=CATEGORIES,
+                        form_values=request.form,
+                        errors={"cover_image": "We couldn't save your image. Please try again."},
+                        **_page_context(),
+                    ), 503
+        finally:
+            if not cover_saved:
+                discard_cover(prepared_cover)
         flash("Changes saved.", "success")
         return redirect(url_for("events.detail", event_id=event.id))
     return render_template(

@@ -10,7 +10,8 @@ import pytest
 def read_config(monkeypatch):
     monkeypatch.setenv("PYTHON_DOTENV_DISABLED", "1")
     for key in ("RENDER", "RENDER_EXTERNAL_HOSTNAME", "RENDER_EXTERNAL_URL",
-                "TRUSTED_HOSTS", "PUBLIC_BASE_URL"):
+                "TRUSTED_HOSTS", "PUBLIC_BASE_URL", "DATABASE_URL",
+                "DATABASE_SCHEMA", "DATABASE_SSL_ROOT_CERT"):
         monkeypatch.delenv(key, raising=False)
 
     def read(**values):
@@ -87,3 +88,23 @@ def test_malformed_explicit_host_list_is_not_silently_replaced(read_config):
     config = read_config(RENDER="true", RENDER_EXTERNAL_HOSTNAME="broncoshub.onrender.com",
                          TRUSTED_HOSTS=",")
     assert config.TRUSTED_HOSTS is None
+
+
+@pytest.mark.parametrize("scheme", ["postgres", "postgresql", "postgresql+psycopg"])
+def test_hosted_database_requires_verified_tls_and_private_search_path(read_config, scheme):
+    config = read_config(DATABASE_URL=f"{scheme}://app:unused@aws-0-us-west-1.pooler.supabase.com:5432/postgres")
+    assert config.SQLALCHEMY_DATABASE_URI.startswith("postgresql+psycopg://")
+    options = config.SQLALCHEMY_ENGINE_OPTIONS
+    assert options["pool_size"] + options["max_overflow"] == 4
+    args = options["connect_args"]
+    assert args["sslmode"] == "verify-full"
+    assert Path(args["sslrootcert"]).is_file()
+    assert Path(args["sslrootcert"]).name == "supabase-ca.crt"
+    assert "-csearch_path=broncoshub" in args["options"]
+    assert args["prepare_threshold"] is None
+
+
+@pytest.mark.parametrize("schema", ["broncoshub,public", "app -csearch_path=public", "../public"])
+def test_schema_cannot_inject_connection_options(read_config, schema):
+    with pytest.raises(RuntimeError, match="DATABASE_SCHEMA"):
+        read_config(DATABASE_URL="postgresql://app:unused@db.example/postgres", DATABASE_SCHEMA=schema)

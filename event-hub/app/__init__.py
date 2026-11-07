@@ -68,7 +68,8 @@ def create_app(config_class=Config):
         )
 
     with app.app_context():
-        db.create_all()
+        from app.database import initialize_database
+        initialize_database(app)
         ensure_event_schema()
 
     return app

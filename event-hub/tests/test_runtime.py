@@ -21,6 +21,9 @@ class ProductionTestConfig(TestConfig):
     ({"PAYMENT_PROVIDER": "mock"}, "Mock payments"),
     ({"DEBUG": True}, "Debug and testing"),
     ({"TESTING": True}, "Debug and testing"),
+    ({"REQUIRE_EXTERNAL_STORAGE": True}, "PostgreSQL"),
+    ({"REQUIRE_EXTERNAL_STORAGE": True,
+      "SQLALCHEMY_DATABASE_URI": "postgresql+psycopg://unused/unused"}, "Supabase"),
 ])
 def test_production_refuses_unsafe_config(values, message):
     config = type("UnsafeConfig", (ProductionTestConfig,), values)
@@ -87,6 +90,23 @@ def test_database_lock_is_retryable_but_not_exposed(app):
     response = app.test_client().get("/_test/locked")
     assert response.status_code == 503
     assert b"secret SQL" not in response.data
+    assert b"Check My Events" in response.data
+
+
+@pytest.mark.parametrize("sqlstate", ["55P03", "40P01", "40001"])
+def test_postgres_lock_or_serialization_failure_is_retryable(app, sqlstate):
+    class PostgresFailure(Exception):
+        pass
+
+    @app.get("/_test/postgres-lock")
+    def locked():
+        cause = PostgresFailure("private database details")
+        cause.sqlstate = sqlstate
+        raise OperationalError("private SQL", {}, cause)
+
+    response = app.test_client().get("/_test/postgres-lock")
+    assert response.status_code == 503
+    assert b"private" not in response.data
     assert b"Check My Events" in response.data
 
 

@@ -1,20 +1,16 @@
-# Creates paid hosting only when a team member approves it in Render.
-# One instance + one disk: SQLite database and covers persist together.
+# Free web service; durable database and private image storage live in Supabase.
+# Fill secrets privately in Render. Never add them to this file.
 services:
   - type: web
     name: broncoshub
     runtime: python
-    plan: 0.5c-512mb
+    plan: free
     region: oregon
     rootDir: event-hub
     buildCommand: pip install -r requirements-production.txt
     startCommand: python tools/start_production.py
     healthCheckPath: /healthz
     autoDeployTrigger: 'off'
-    disk:
-      name: broncoshub-data
-      mountPath: /var/data
-      sizeGB: 1
     envVars:
       - key: PYTHON_VERSION
         value: 3.12.13
@@ -23,9 +19,19 @@ services:
       - key: SECRET_KEY
         generateValue: true
       - key: DATABASE_URL
-        value: sqlite:////var/data/broncoshub.db
-      - key: COVER_UPLOAD_DIR
-        value: /var/data/uploads/event-covers
+        sync: false
+      - key: DATABASE_SCHEMA
+        value: broncoshub
+      - key: REQUIRE_EXTERNAL_STORAGE
+        value: 'true'
+      - key: COVER_STORAGE_BACKEND
+        value: supabase
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SECRET_KEY
+        sync: false
+      - key: SUPABASE_STORAGE_BUCKET
+        value: event-covers
       - key: TRUST_PROXY
         value: 'true'
       - key: PAYMENT_PROVIDER

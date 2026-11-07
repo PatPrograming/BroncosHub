@@ -11,6 +11,7 @@ from PIL import Image, ImageOps, UnidentifiedImageError
 from sqlalchemy import inspect, text
 
 from app.extensions import db
+from app.services.remote_cover_storage import RemoteCoverStorage
 
 
 FORMATS = {".jpg": "JPEG", ".jpeg": "JPEG", ".png": "PNG", ".webp": "WEBP"}
@@ -90,9 +91,12 @@ def cover_path(name):
 
 
 def store_cover(data):
+    name = f"{secrets.token_hex(16)}.webp"
+    if current_app.config.get("COVER_STORAGE_BACKEND", "local") == "supabase":
+        RemoteCoverStorage(current_app.config).save(name, data)
+        return name
     directory = cover_directory()
     directory.mkdir(parents=True, exist_ok=True)
-    name = f"{secrets.token_hex(16)}.webp"
     path = directory / name
     try:
         with path.open("xb") as target:
@@ -104,15 +108,44 @@ def store_cover(data):
 
 
 def delete_cover(name):
+    if not isinstance(name, str) or not STORED_NAME.fullmatch(name):
+        return
+    if current_app.config.get("COVER_STORAGE_BACKEND", "local") == "supabase":
+        RemoteCoverStorage(current_app.config).delete(name)
+        return
     path = cover_path(name)
     if path is not None:
         path.unlink(missing_ok=True)
 
 
-def commit_event_with_cover(event, image_data=None, remove=False):
+def read_cover(name):
+    """Read a validated object key from the configured backend, never fall back."""
+    if not isinstance(name, str) or not STORED_NAME.fullmatch(name):
+        return None
+    if current_app.config.get("COVER_STORAGE_BACKEND", "local") == "supabase":
+        return RemoteCoverStorage(current_app.config).read(name)
+    path = cover_path(name)
+    if path is None or not path.is_file():
+        return None
+    return path.read_bytes()
+
+
+def discard_cover(name):
+    """Best-effort cleanup must not hide the error that prevented a save."""
+    if name is None:
+        return
+    try:
+        delete_cover(name)
+    except OSError:
+        current_app.logger.warning("Could not remove an unused event cover.")
+
+
+def commit_event_with_cover(event, image_data=None, remove=False, stored_cover=None):
     """Keep the old file until the event save succeeds; clean failed new saves."""
     previous = event.cover_image_path
-    replacement = store_cover(image_data) if image_data is not None else None
+    if stored_cover is not None and (image_data is not None or not STORED_NAME.fullmatch(stored_cover)):
+        raise ValueError("Provide one validated replacement cover.")
+    replacement = stored_cover or (store_cover(image_data) if image_data is not None else None)
     if replacement is not None or remove:
         event.cover_image_path = replacement
     try:
@@ -120,8 +153,7 @@ def commit_event_with_cover(event, image_data=None, remove=False):
         db.session.commit()
     except Exception:
         db.session.rollback()
-        if replacement is not None:
-            delete_cover(replacement)
+        discard_cover(replacement)
         raise
     if previous and previous != event.cover_image_path:
         try:

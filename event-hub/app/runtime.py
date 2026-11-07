@@ -23,6 +23,13 @@ ERROR_PAGES = {
 
 
 def configure_runtime(app):
+    from app.services.remote_cover_storage import validate_cover_storage_config
+    validate_cover_storage_config(app.config)
+    if app.config.get("REQUIRE_EXTERNAL_STORAGE"):
+        if not str(app.config.get("SQLALCHEMY_DATABASE_URI", "")).startswith("postgresql"):
+            raise RuntimeError("This deployment requires an external PostgreSQL database.")
+        if app.config.get("COVER_STORAGE_BACKEND") != "supabase":
+            raise RuntimeError("This deployment requires persistent Supabase cover storage.")
     if app.config.get("APP_ENV") not in {"development", "testing", "production"}:
         raise RuntimeError("APP_ENV must be development, testing, or production.")
     if app.config.get("PAYMENT_PROVIDER") not in {"disabled", "mock", "stripe"}:
@@ -101,7 +108,10 @@ def configure_runtime(app):
         db.session.rollback()
         # Retryable lock contention has a distinct response. Other DB failures
         # remain server errors; log the exception, never expose it to visitors.
-        busy = "database is locked" in str(error).lower() or "database is busy" in str(error).lower()
+        sqlstate = getattr(error.orig, "sqlstate", None)
+        busy = ("database is locked" in str(error).lower()
+                or "database is busy" in str(error).lower()
+                or sqlstate in {"55P03", "40P01", "40001"})
         status = 503 if busy else 500
         app.logger.exception("Database operation failed")
         title, message = ERROR_PAGES[status]

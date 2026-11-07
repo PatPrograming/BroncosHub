@@ -1,4 +1,4 @@
-"""Retry durable payment work on the same disk as the web process."""
+"""Retry durable payment work in the same database as the web process."""
 import logging
 from pathlib import Path
 import signal

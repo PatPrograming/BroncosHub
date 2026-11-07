@@ -1,4 +1,4 @@
-"""Small-campus deployment with a single persistent SQLite database."""
+"""Small-campus deployment with conservative process and connection limits."""
 import os
 
 bind = os.environ.get("BIND_ADDRESS", "0.0.0.0") + ":" + os.environ.get("PORT", "8000")

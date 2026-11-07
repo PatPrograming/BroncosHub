@@ -12,6 +12,7 @@ from app.extensions import db
 from app.models import Event, Report
 from app.models.report import REPORT_REASONS
 from app.security import csrf_token, validate_csrf
+from app.services.event_write_service import event_write
 
 
 reporting_bp = Blueprint("reporting", __name__)
@@ -59,18 +60,21 @@ def report_event(event_id):
             errors["details"] = "Explain the issue in 10 to 2,000 characters."
         if not errors:
             try:
-                # Recheck publication in the insert itself so a simultaneous
-                # removal cannot leave a new pending report on a closed event.
-                created = db.session.execute(insert(Report).from_select(
-                    ["event_id", "reporter_id", "reason", "details", "status", "created_at"],
-                    select(Event.id, literal(current_user.id), literal(reason), literal(details),
-                           literal("pending"), literal(datetime.now(timezone.utc).replace(tzinfo=None)))
-                    .where(Event.id == event_id, Event.status == "published"),
-                ))
-                if not created.rowcount:
-                    db.session.rollback()
-                    abort(409)
-                db.session.commit()
+                # PostgreSQL SELECTs do not wait for another transaction's
+                # event update. Use the same event lock as moderation before
+                # checking publication and inserting the report.
+                with event_write(event_id) as locked_event:
+                    if locked_event is None or locked_event.status != "published":
+                        abort(409)
+                    created = db.session.execute(insert(Report).from_select(
+                        ["event_id", "reporter_id", "reason", "details", "status", "created_at"],
+                        select(Event.id, literal(current_user.id), literal(reason), literal(details),
+                               literal("pending"), literal(datetime.now(timezone.utc).replace(tzinfo=None)))
+                        .where(Event.id == event_id, Event.status == "published"),
+                    ))
+                    if not created.rowcount:
+                        abort(409)
+                    db.session.commit()
             except IntegrityError:
                 db.session.rollback()
                 if _existing_report(event_id) is None:

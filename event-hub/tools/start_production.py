@@ -1,4 +1,4 @@
-"""Run the website and payment recovery together on a single persistent disk."""
+"""Run the website and payment recovery against the same durable database."""
 from pathlib import Path
 import signal
 import subprocess

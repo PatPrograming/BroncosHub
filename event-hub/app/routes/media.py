@@ -1,11 +1,13 @@
 """Event-bound media access keeps removed posters out of public circulation."""
 
-from flask import Blueprint, abort, send_file
+from io import BytesIO
+
+from flask import Blueprint, abort, current_app, send_file
 from flask_login import current_user
 
 from app.extensions import db
 from app.models import Event
-from app.services.cover_service import cover_path
+from app.services.cover_service import read_cover
 
 
 media_bp = Blueprint("media", __name__, url_prefix="/media")
@@ -30,7 +32,11 @@ def event_cover(event_id):
         )
         if not may_review:
             abort(404)
-    path = cover_path(event.cover_image_path)
-    if path is None or not path.is_file():
+    try:
+        image = read_cover(event.cover_image_path)
+    except OSError:
+        current_app.logger.warning("Could not read an event cover from storage.")
+        abort(503)
+    if image is None:
         abort(404)
-    return send_file(path, mimetype="image/webp", conditional=False, etag=False, max_age=0)
+    return send_file(BytesIO(image), mimetype="image/webp", conditional=False, etag=False, max_age=0)

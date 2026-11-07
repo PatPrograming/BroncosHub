@@ -1,14 +1,14 @@
 # BroncosHub
 
-Campus events for the SCU community. Flask serves the pages, SQLAlchemy stores records in SQLite, and pytest checks the app. Team: Jaden Hill, Patrick Zhang, Ethan Can.
+Campus events for the SCU community. Flask serves the pages, SQLAlchemy stores records in SQLite locally or PostgreSQL when hosted, and pytest checks the app. Team: Jaden Hill, Patrick Zhang, Ethan Can.
 
-## Current application — November 4, 2026
+## Current application — November 6, 2026
 
 The real app connects event creation, browsing/search/calendar, registration, tickets, profiles, persistent cover images, organizer statistics, and report moderation. Lists use pagination. Removed events and covers are hidden from students while receipts and administrator review history remain available. Registration capacity is checked inside database transactions so simultaneous requests cannot take the same final seat.
 
 Organizer-owned Stripe payments are implemented using hosted onboarding and Checkout. BroncosHub takes no platform fee. Paid event publishing and checkout require a ready connected account. Signed payment notifications and reconciliation confirm purchases; returning from checkout alone never issues a ticket. Event cancellation/removal queues refunds and invalidates admission. Payment recovery runs alongside the production web process.
 
-**Payments are disabled until configured. Google credentials, Stripe sandbox/live verification, and public hosting still need setup.** Local tests do not prove these external services work. See [deployment and payment setup](docs/deployment.md).
+**Payments are disabled until configured. Google credentials and Stripe sandbox/live verification still need setup.** The deployment configuration uses Render Free with Supabase PostgreSQL and private image storage. A checked-in configuration and passing local tests do not prove that a public deployment or external sign-in/payments work. See [deployment and payment setup](docs/deployment.md).
 
 ## Run it locally
 
@@ -59,9 +59,11 @@ Students can report published events. Administrators can dismiss a report or rem
 
 ## Saved images and database upgrades
 
-The default database is `instance/broncoshub.db`. Covers are validated JPG/PNG/WebP images (up to 5 MB / 20 million pixels), re-encoded as WebP and saved to `instance/uploads/event-covers`. `COVER_UPLOAD_DIR` can select another directory. The media route checks access before serving private or removed event images.
+Local development defaults to `instance/broncoshub.db`. Covers are validated JPG/PNG/WebP images (up to 5 MB / 20 million pixels), re-encoded as WebP and saved to `instance/uploads/event-covers`. `COVER_UPLOAD_DIR` can select another local directory.
 
-Startup adds the cover column to older SQLite databases, preserves records, and creates new payment tables. It also distinguishes legacy admin removals from ordinary cancellations. Keep the database and images together on persistent storage. Before deployment/updates, follow the verified offline backup and restore commands in [deployment notes](docs/deployment.md#data-and-updates). A database restore does not rewind payments already made in Stripe.
+The hosted configuration uses PostgreSQL and a private Supabase Storage bucket instead. `REQUIRE_EXTERNAL_STORAGE=true` prevents it from silently saving data on Render's temporary filesystem. The media route checks event visibility and viewer access before serving any cover. Server-only storage credentials never go to the browser.
+
+Startup adds the cover column to older SQLite databases, preserves records, and creates missing tables. It also distinguishes legacy admin removals from ordinary cancellations. PostgreSQL uses a separately provisioned private `broncoshub` schema. Startup does not migrate local data into Supabase. Before deployment/updates, follow the separate hosted and local backup procedures in [deployment notes](docs/deployment.md#data-and-updates). The local backup tool does not export Supabase data or images. A database restore does not rewind payments already made in Stripe.
 
 ## Project structure
 
@@ -70,7 +72,7 @@ Startup adds the cover column to older SQLite databases, preserves records, and 
 - `app/services/`: business rules, cover validation, payment gateway and reconciliation.
 - `app/templates/` and `app/static/`: shared page UI, styles, scripts and artwork.
 - `tools/start_production.py`: starts the production website and payment recovery together.
-- `tools/data_backup.py`: offline database/image backup and restore.
+- `tools/data_backup.py`: offline local SQLite/local-image backup and restore.
 - `docs/deployment.md`: hosting, secrets, payment setup and remaining external checks.
 - `docs/ui-integration.md`: teammate handoff and UI integration notes.
 
