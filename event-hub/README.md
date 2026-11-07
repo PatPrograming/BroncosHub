@@ -35,6 +35,8 @@ Google sign-in needs `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` in `.env`, wi
 
 `http://127.0.0.1:5080/auth/google/callback`
 
+For a public deployment, publish the Google OAuth app, add `https://YOUR-HOST/auth/google/callback`, and set `PUBLIC_BASE_URL` / `TRUSTED_HOSTS` to that host. Production requires those Google settings before the app starts. Full checklist: [deployment notes](docs/deployment.md#google-and-account-roles).
+
 Every verified SCU account can create events and manage its own events, statistics and payment setup. New accounts keep the student role; no organizer approval is needed. Publishing a paid event requires the host’s Stripe account to be ready.
 
 Admin moderation remains separate. The selected initial admin is **ecan@scu.edu**, pending a verified Google sign-in. There is no automatic grant based on that email. After the account exists, a trusted operator can grant access in the intended database:

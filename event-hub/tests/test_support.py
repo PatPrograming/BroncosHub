@@ -41,12 +41,34 @@ def signed_in(app, user_id):
 def test_support_and_privacy_are_public_and_use_selected_support_address(client, support_case):
     support = client.get("/support")
     privacy = client.get("/privacy")
-    assert support.status_code == privacy.status_code == 200
+    terms = client.get("/terms")
+    assert support.status_code == privacy.status_code == terms.status_code == 200
     assert b'mailto:ecan@scu.edu' in support.data
     assert b'mailto:ecan@scu.edu' in privacy.data
     assert b"queued for refunds" in support.data
     assert b"reviewed manually" in privacy.data
+    assert b"openid" in privacy.data
+    assert b"Google API Services User Data Policy" in privacy.data
+    assert b"Terms of service" in terms.data
     assert b'aria-label="Help and privacy"' in client.get("/").data
+
+
+def test_home_names_broncoshub_links_privacy_and_allows_browsing_without_login(client, support_case):
+    home = client.get("/")
+    assert home.status_code == 200
+    assert b"BroncosHub" in home.data
+    assert b"Campus events for Santa Clara University students" in home.data
+    assert b"without signing in" in home.data
+    assert b'href="/privacy"' in home.data
+    assert b'href="/terms"' in home.data
+    assert b'name="google-site-verification"' not in home.data
+
+
+def test_google_site_verification_meta_when_configured(app, client, support_case):
+    app.config["GOOGLE_SITE_VERIFICATION"] = "test-verification-token"
+    home = client.get("/")
+    assert b'name="google-site-verification"' in home.data
+    assert b"test-verification-token" in home.data
 
 
 def test_public_event_offers_contact_without_exposing_organizer_email(client, support_case):

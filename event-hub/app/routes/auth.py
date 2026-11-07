@@ -84,6 +84,15 @@ def account_name(claims):
     return name[:80] or "Bronco"
 
 
+def google_redirect_uri():
+    """Prefer the configured public origin so production callbacks match Google Console."""
+    base = (current_app.config.get("PUBLIC_BASE_URL") or "").rstrip("/")
+    path = url_for("auth.google_callback")
+    if base:
+        return f"{base}{path}"
+    return url_for("auth.google_callback", _external=True)
+
+
 @auth_bp.route("/login")
 def login():
     next_url = safe_next(request.args.get("next"))
@@ -111,7 +120,7 @@ def google_login():
         return redirect(url_for("auth.login"))
     next_url = safe_next(request.args.get("next"))
     session["auth_next"] = next_url
-    redirect_uri = url_for("auth.google_callback", _external=True)
+    redirect_uri = google_redirect_uri()
     try:
         return oauth.google.authorize_redirect(redirect_uri, hd=allowed_domain())
     except (AuthlibBaseError, RequestException):

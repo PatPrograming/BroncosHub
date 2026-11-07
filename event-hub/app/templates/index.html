@@ -1,11 +1,22 @@
 {% extends 'base.html' %}
 {% from 'components/ui.html' import icon %}
-{% block title %}Home{% endblock %}
+{% block title %}Campus events at SCU{% endblock %}
 {% block page_assets %}<link rel="stylesheet" href="{{ url_for('static', filename='css/home.css') }}">{% endblock %}
 {% block content %}
 <section class="container home-dashboard">
+  <section class="home-about surface" aria-labelledby="broncoshub-about-title">
+    <p class="home-product-name">BroncosHub</p>
+    <h1 id="broncoshub-about-title" class="page-title">Campus events for Santa Clara University students</h1>
+    <p class="muted">BroncosHub is a campus events app for the SCU community. Anyone can browse upcoming events without signing in. Students use a verified <code>@scu.edu</code> Google account to register, save tickets, and host their own listings.</p>
+    <div class="home-about-actions">
+      <a class="button button-primary" href="/events">Browse events {{ icon('arrow-right') }}</a>
+      {% if not user %}<a class="button button-secondary" href="/login">Sign in with Google</a>{% elif user.can_organize %}<a class="link" href="/organizer/events/new">Create an event {{ icon('plus') }}</a>{% endif %}
+    </div>
+    <p class="home-legal-links small muted">Read our <a class="link" href="{{ url_for('support.privacy') }}">privacy policy</a> and <a class="link" href="{{ url_for('support.terms') }}">terms of service</a>.</p>
+  </section>
+
   <header class="home-heading">
-    <div><h1 class="page-title">Today at SCU</h1><p class="muted">{{ home_today_label }}</p></div>
+    <div><h2 class="page-title">Today at SCU</h2><p class="muted">{{ home_today_label }}</p></div>
     <div class="home-heading-actions">
       {% if user and user.can_organize %}<a class="link" href="/organizer/events/new">Create an event {{ icon('plus') }}</a>{% endif %}
       <a class="button button-primary" href="/events">Explore events {{ icon('arrow-right') }}</a>
@@ -58,7 +69,7 @@
       {% else %}
       <div class="home-personal-empty">
         {% if user %}<h3>You haven’t signed up for an upcoming event.</h3><p class="muted">Find one in Explore and register to see it here.</p><a class="button button-secondary" href="/events">Find an event {{ icon('arrow-right') }}</a>
-        {% else %}<h3>Already have plans?</h3><p class="muted">Sign in to see your next event and open your ticket.</p><a class="button button-secondary" href="/login?next=/">Sign in {{ icon('arrow-right') }}</a>{% endif %}
+        {% else %}<h3>Browse without an account</h3><p class="muted">Event listings are public. Sign in with your SCU Google account only when you want to register or host.</p><a class="button button-secondary" href="/events">Browse events {{ icon('arrow-right') }}</a>{% endif %}
       </div>
       {% endif %}
     </aside>

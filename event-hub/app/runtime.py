@@ -22,6 +22,18 @@ ERROR_PAGES = {
 }
 
 
+def public_base_url_is_valid(app):
+    base = app.config.get("PUBLIC_BASE_URL", "")
+    try:
+        parsed = urlsplit(base)
+        return (parsed.scheme == "https" and parsed.hostname in (app.config.get("TRUSTED_HOSTS") or [])
+                and parsed.port in (None, 443) and not parsed.username and not parsed.password
+                and parsed.path in ("", "/") and not parsed.query and not parsed.fragment
+                and "\\" not in base and not any(ord(c) <= 32 for c in base))
+    except ValueError:
+        return False
+
+
 def configure_runtime(app):
     from app.services.remote_cover_storage import validate_cover_storage_config
     validate_cover_storage_config(app.config)
@@ -42,6 +54,17 @@ def configure_runtime(app):
             raise RuntimeError("Set TRUSTED_HOSTS to the deployed hostname before starting production.")
         if app.config.get("DEBUG") or app.config.get("TESTING"):
             raise RuntimeError("Debug and testing modes must be off in production.")
+        domain = (app.config.get("ALLOWED_EMAIL_DOMAIN") or "").strip().lower()
+        if domain != "scu.edu":
+            raise RuntimeError("ALLOWED_EMAIL_DOMAIN must be scu.edu in production.")
+        if not public_base_url_is_valid(app):
+            raise RuntimeError("PUBLIC_BASE_URL must be the HTTPS origin of an explicit TRUSTED_HOSTS entry.")
+        # Google secrets are required before students can sign in, but the public
+        # home/privacy pages must still deploy for Auth Platform branding checks.
+        google_id = app.config.get("GOOGLE_CLIENT_ID") or ""
+        google_secret = app.config.get("GOOGLE_CLIENT_SECRET") or ""
+        if bool(google_id) != bool(google_secret):
+            raise RuntimeError("Set both GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET together.")
         if app.config.get("PAYMENT_PROVIDER") == "mock":
             raise RuntimeError("Mock payments cannot run in production. Configure real payments or leave them disabled.")
         if app.config.get("PAYMENT_PROVIDER") == "stripe":
@@ -50,17 +73,6 @@ def configure_runtime(app):
                 raise RuntimeError("Set a STRIPE_SECRET_KEY that matches STRIPE_LIVE_MODE.")
             if not app.config.get("STRIPE_WEBHOOK_SECRET", "").startswith("whsec_"):
                 raise RuntimeError("Set STRIPE_WEBHOOK_SECRET for the connected-account webhook.")
-            base = app.config.get("PUBLIC_BASE_URL", "")
-            try:
-                parsed = urlsplit(base)
-                valid = (parsed.scheme == "https" and parsed.hostname in app.config["TRUSTED_HOSTS"]
-                         and parsed.port in (None, 443) and not parsed.username and not parsed.password
-                         and parsed.path in ("", "/") and not parsed.query and not parsed.fragment
-                         and "\\" not in base and not any(ord(c) <= 32 for c in base))
-            except ValueError:
-                valid = False
-            if not valid:
-                raise RuntimeError("PUBLIC_BASE_URL must be the HTTPS origin of an explicit TRUSTED_HOSTS entry.")
         app.config.update(SESSION_COOKIE_SECURE=True, REMEMBER_COOKIE_SECURE=True)
     if app.config.get("TRUST_PROXY"):
         # Exactly one trusted reverse proxy. Never trust the forwarded host.

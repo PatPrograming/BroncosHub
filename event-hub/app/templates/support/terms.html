@@ -1,0 +1,36 @@
+{% extends 'base.html' %}
+{% block title %}Terms of service{% endblock %}
+{% block content %}
+<section class="container page-section legal-page">
+  <div class="page-heading">
+    <h1 class="page-title">Terms of service</h1>
+    <p class="muted">Rules for using <strong>BroncosHub</strong>. Last updated November 7, 2026.</p>
+  </div>
+  <div class="stack legal-prose">
+    <section class="card stack-sm">
+      <h2 class="section-title">The service</h2>
+      <p>BroncosHub is a Santa Clara University student project for discovering and managing campus events. By using the site, you agree to these terms and the <a class="link" href="{{ url_for('support.privacy') }}">privacy policy</a>.</p>
+    </section>
+    <section class="card stack-sm">
+      <h2 class="section-title">Eligibility and accounts</h2>
+      <p>Signing in requires a verified <code>@scu.edu</code> Google account. You are responsible for activity under your account. Do not bypass sign-in, impersonate others, or access another student’s data.</p>
+    </section>
+    <section class="card stack-sm">
+      <h2 class="section-title">Events and content</h2>
+      <p>Hosts must provide accurate details and only list events they are authorized to organize. Do not post unlawful, harassing, misleading, or otherwise inappropriate content. Administrators may dismiss reports or remove events; removal can cancel registrations and invalidate tickets.</p>
+    </section>
+    <section class="card stack-sm">
+      <h2 class="section-title">Registrations, tickets, and payments</h2>
+      <p>Registration is subject to capacity and event status. When payments are enabled, checkout is handled by Stripe for the organizer’s connected account. Returning from checkout alone does not confirm a purchase until BroncosHub verifies payment. Voluntary paid-ticket refunds remain an organizer decision unless required otherwise.</p>
+    </section>
+    <section class="card stack-sm">
+      <h2 class="section-title">Availability</h2>
+      <p>BroncosHub is provided as a class/project service without uptime guarantees. Free hosting may sleep after idle periods. Features may change, and the project may pause or end.</p>
+    </section>
+    <section class="card stack-sm">
+      <h2 class="section-title">Contact</h2>
+      <p>Questions: email <a class="link" href="{{ support_mailto }}">{{ support_email }}</a> from your SCU address, or visit <a class="link" href="{{ url_for('support.support') }}">Support</a>.</p>
+    </section>
+  </div>
+</section>
+{% endblock %}

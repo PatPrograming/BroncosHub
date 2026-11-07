@@ -40,7 +40,36 @@ Keep `PAYMENT_PROVIDER=disabled` for the initial deployment. The payment and not
 
 ## Google and account roles
 
-A team member must finish Google OAuth configuration before students can sign in. Patrick can use the origin `https://broncoshub.onrender.com` and the exact authorized redirect URI `https://broncoshub.onrender.com/auth/google/callback` for his web application OAuth client. Set `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` privately in Render; keep `ALLOWED_EMAIL_DOMAIN=scu.edu`. These addresses are ready for configuration, but a real Google sign-in still needs testing after the credentials are added.
+Production requires `ALLOWED_EMAIL_DOMAIN=scu.edu` and a valid `PUBLIC_BASE_URL`. Set both `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` together in Render before students can sign in. Patrick can use origin `https://broncoshub.onrender.com` and redirect URI `https://broncoshub.onrender.com/auth/google/callback`.
+
+### Publish Google sign-in for every SCU account
+
+1. Open [Google Auth Platform](https://console.cloud.google.com/auth/overview).
+2. **Branding**: app name exactly `BroncosHub`, support email a team member (for example `ecan@scu.edu`).
+3. **Audience**: External.
+4. **Data access**: only `openid`, `email`, and `profile`.
+5. **Clients**: Web application with:
+   - Local: `http://127.0.0.1:5080/auth/google/callback`
+   - Hosted: `https://broncoshub.onrender.com/auth/google/callback`
+6. **Branding** URLs:
+   - Home: `https://broncoshub.onrender.com/`
+   - Privacy: `https://broncoshub.onrender.com/privacy`
+   - Terms: `https://broncoshub.onrender.com/terms`
+7. **Audience → Publishing status**: publish the app so accounts beyond the test-user list can open consent.
+
+### Google branding / ownership checks
+
+Render Free can sleep after idle time, which makes Google’s checker report “unresponsive”. Before retrying branding verification:
+
+1. Open `https://broncoshub.onrender.com/` and `https://broncoshub.onrender.com/privacy` in a private window while signed out, wait until both fully load, then start the Google check immediately.
+2. Verify ownership in [Google Search Console](https://search.google.com/search-console) for `https://broncoshub.onrender.com/` (URL-prefix). Use the HTML tag method: put the token in Render as `GOOGLE_SITE_VERIFICATION`, redeploy, confirm the meta tag in page source, then verify. Wait **24 hours** after ownership succeeds before retrying Auth Platform branding.
+3. The home page must show the name **BroncosHub**, explain the campus-events purpose, allow browsing without login, and link to `/privacy` above the fold.
+
+After publish, any Google account can reach consent. BroncosHub still rejects non-`@scu.edu` and unverified emails.
+
+### Confirm with a second SCU account
+
+From a browser that is not already a listed test user: open `https://broncoshub.onrender.com/login`, continue with Google using a different `@scu.edu` account, confirm the first visit creates a student profile, reject a non-SCU account, and confirm logout clears the session.
 
 Every verified SCU account can host events and manage only its own listings and statistics. New accounts remain students; no organizer-role assignment is needed. Paid events additionally require completed Stripe setup.
 

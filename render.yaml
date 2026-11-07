@@ -34,6 +34,12 @@ services:
         value: event-covers
       - key: TRUST_PROXY
         value: 'true'
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: GOOGLE_CLIENT_SECRET
+        sync: false
+      - key: GOOGLE_SITE_VERIFICATION
+        sync: false
       - key: PAYMENT_PROVIDER
         value: disabled
       - key: STRIPE_LIVE_MODE

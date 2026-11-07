@@ -47,6 +47,11 @@ def privacy():
     return render_template("support/privacy.html")
 
 
+@support_bp.get("/terms")
+def terms():
+    return render_template("support/terms.html")
+
+
 @support_bp.get("/events/<int:event_id>/contact")
 @login_required
 def organizer_contact(event_id):

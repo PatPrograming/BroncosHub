@@ -134,6 +134,42 @@ def test_sign_in_failures_return_to_login_without_creating_an_account(app, clien
         assert "auth_next" not in session
 
 
+def test_google_authorize_uses_public_base_url_when_configured(app, client, monkeypatch):
+    captured = {}
+
+    def capture_redirect(redirect_uri, hd=None):
+        captured["redirect_uri"] = redirect_uri
+        captured["hd"] = hd
+        return "redirected", 302
+
+    monkeypatch.setattr("app.routes.auth.oauth", SimpleNamespace(google=SimpleNamespace(
+        authorize_redirect=capture_redirect,
+    )))
+    app.config["PUBLIC_BASE_URL"] = "https://broncoshub.example"
+    response = client.get("/auth/google?next=/my-registrations")
+    assert response.status_code == 302
+    assert captured["redirect_uri"] == "https://broncoshub.example/auth/google/callback"
+    assert captured["hd"] == "scu.edu"
+    with client.session_transaction() as session:
+        assert session["auth_next"] == "/my-registrations"
+
+
+def test_google_authorize_falls_back_to_request_host_without_public_base(app, client, monkeypatch):
+    captured = {}
+
+    def capture_redirect(redirect_uri, hd=None):
+        captured["redirect_uri"] = redirect_uri
+        return "redirected", 302
+
+    monkeypatch.setattr("app.routes.auth.oauth", SimpleNamespace(google=SimpleNamespace(
+        authorize_redirect=capture_redirect,
+    )))
+    app.config["PUBLIC_BASE_URL"] = ""
+    response = client.get("/auth/google", base_url="http://127.0.0.1:5080")
+    assert response.status_code == 302
+    assert captured["redirect_uri"] == "http://127.0.0.1:5080/auth/google/callback"
+
+
 @pytest.mark.parametrize("stored_token", [None, 123, [], {"unexpected": "object"}])
 def test_malformed_session_csrf_data_fails_cleanly(app, client, google_claims, stored_token):
     token = sign_in(client)

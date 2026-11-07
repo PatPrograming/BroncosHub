@@ -12,7 +12,11 @@ class ProductionTestConfig(TestConfig):
     TESTING = False
     SECRET_KEY = "a" * 64
     TRUSTED_HOSTS = ["broncoshub.example"]
+    PUBLIC_BASE_URL = "https://broncoshub.example"
     PAYMENT_PROVIDER = "disabled"
+    GOOGLE_CLIENT_ID = "production-google-client"
+    GOOGLE_CLIENT_SECRET = "production-google-secret"
+    ALLOWED_EMAIL_DOMAIN = "scu.edu"
 
 
 @pytest.mark.parametrize("values, message", [
@@ -24,6 +28,11 @@ class ProductionTestConfig(TestConfig):
     ({"REQUIRE_EXTERNAL_STORAGE": True}, "PostgreSQL"),
     ({"REQUIRE_EXTERNAL_STORAGE": True,
       "SQLALCHEMY_DATABASE_URI": "postgresql+psycopg://unused/unused"}, "Supabase"),
+    ({"GOOGLE_CLIENT_ID": "only-id", "GOOGLE_CLIENT_SECRET": ""}, "GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET"),
+    ({"ALLOWED_EMAIL_DOMAIN": "gmail.com"}, "ALLOWED_EMAIL_DOMAIN"),
+    ({"PUBLIC_BASE_URL": ""}, "PUBLIC_BASE_URL"),
+    ({"PUBLIC_BASE_URL": "http://broncoshub.example"}, "PUBLIC_BASE_URL"),
+    ({"PUBLIC_BASE_URL": "https://attacker.example"}, "PUBLIC_BASE_URL"),
 ])
 def test_production_refuses_unsafe_config(values, message):
     config = type("UnsafeConfig", (ProductionTestConfig,), values)

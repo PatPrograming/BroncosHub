@@ -66,7 +66,13 @@ def create_app(config_class=Config):
         user = current_user.account_view() if current_user.is_authenticated else None
         if user is not None:
             user["can_organize"] = current_user.can_organize
-        return {"user": user, "preview_mode": False, "payment_provider": app.config["PAYMENT_PROVIDER"], "payment_live": app.config.get("STRIPE_LIVE_MODE", False)}
+        return {
+            "user": user,
+            "preview_mode": False,
+            "payment_provider": app.config["PAYMENT_PROVIDER"],
+            "payment_live": app.config.get("STRIPE_LIVE_MODE", False),
+            "google_site_verification": app.config.get("GOOGLE_SITE_VERIFICATION", ""),
+        }
 
     @app.route("/")
     def home():

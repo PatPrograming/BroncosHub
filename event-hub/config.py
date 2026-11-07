@@ -66,6 +66,8 @@ class Config:
     ALLOWED_EMAIL_DOMAIN = os.environ.get("ALLOWED_EMAIL_DOMAIN", "scu.edu")
     GOOGLE_CLIENT_ID = os.environ.get("GOOGLE_CLIENT_ID", "")
     GOOGLE_CLIENT_SECRET = os.environ.get("GOOGLE_CLIENT_SECRET", "")
+    # Optional HTML tag token from Google Search Console / ownership checks.
+    GOOGLE_SITE_VERIFICATION = os.environ.get("GOOGLE_SITE_VERIFICATION", "")
     SUPPORT_EMAIL = os.environ.get("SUPPORT_EMAIL", "ecan@scu.edu")
     RATE_LIMIT_ENABLED = os.environ.get("RATE_LIMIT_ENABLED", "true").lower() == "true"
     NOTIFICATION_EMAIL_PROVIDER = os.environ.get("NOTIFICATION_EMAIL_PROVIDER", "disabled")

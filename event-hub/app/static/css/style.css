@@ -1682,6 +1682,32 @@ input[type="radio"],input[type="checkbox"] {
   font-size:23px;
 }
 
+.footer-links {
+  display:flex;
+  align-items:center;
+  gap:18px;
+}
+
+.legal-page {
+  max-width:720px;
+}
+
+.legal-prose {
+  gap:18px;
+  line-height:1.65;
+}
+
+.legal-prose ul {
+  margin:0;
+  padding-left:1.2em;
+  display:grid;
+  gap:8px;
+}
+
+.legal-prose code {
+  font-size:.95em;
+}
+
 .footer-inner p {
   font-size:var(--text-small);
   color:var(--muted);
