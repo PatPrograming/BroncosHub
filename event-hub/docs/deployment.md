@@ -2,7 +2,7 @@
 
 The real Flask app is deployed at **https://broncoshub.onrender.com**. The initial Render deployment and database health check succeeded on November 6, 2026. Google sign-in and Stripe sandbox/live payments remain unconfigured and unverified.
 
-The support, request-limit, notification, alerting and hosted-backup additions described below are the latest **local changes**, not a verified deployment. No automatic backup schedule or live email/alert delivery has been configured or verified.
+The support, request-limit, notification, optional alerting and backup-tool additions were deployed in commit `3ca5be5` on November 7, 2026. Public health, support and privacy checks passed. Gmail sender authorization completed, and one controlled local test reached the recipient's Spam folder. Hosted event-email flows still require real SCU login checks. No automatic backup schedule or live alert delivery has been configured or verified.
 
 ## Free Render website with Supabase storage
 
@@ -60,7 +60,7 @@ Keep `RATE_LIMIT_ENABLED=true` in production. Costly actions use shared SQLite/P
 
 Free registrations, verified successful ticket payments, student cancellations, event time/location edits, organizer cancellations and moderation removals queue notices in the same transaction as the change. Pending or failed payments do not send confirmation. The worker sends committed notices separately and skips obsolete messages after cancellation, re-registration or another edit. An email already accepted by a provider cannot be recalled.
 
-Email delivery defaults to **disabled**. The chosen free setup uses a dedicated Gmail sender; the account and its authorization must be completed before enabling it. This is separate from Patrick's student Google login and does not change its callback or permissions. See [Gmail sender setup](gmail-email.md).
+Email delivery defaults to **disabled** in application configuration. The chosen free sender, `broncoshubscu@gmail.com`, completed authorization on November 7; the actual runtime setting is managed privately in Render. This is separate from Patrick's student Google login and does not change its callback or permissions. See [Gmail sender setup](gmail-email.md), including the first test's Spam-folder result.
 
 For Gmail, set these in Render's private environment settings after authorization:
 

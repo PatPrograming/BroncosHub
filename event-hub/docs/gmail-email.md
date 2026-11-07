@@ -1,6 +1,6 @@
 # BroncosHub Gmail sender
 
-Status: local implementation and setup preparation. The dedicated account is `broncoshubscu@gmail.com`; its separate Google Cloud project is `broncoshub-email`, with Gmail API enabled. Sender authorization, real email delivery and deployment are still pending. Email remains disabled until the account is connected and controlled delivery checks pass.
+Status checked November 7, 2026: the email implementation is deployed, and `broncoshubscu@gmail.com` authorized send-only access through the separate `broncoshub-email` project. One approved setup message was accepted by Gmail; the sender's Sent folder confirmed the From and Reply-To addresses, and the recipient reported receiving it in Spam. This verifies delivery of that local transport test, not reliable inbox placement or a hosted registration flow. Student Google login and hosted event-email checks remain separate work.
 
 ## Create and authorize the sender
 
@@ -26,6 +26,8 @@ Copy the generated `GMAIL_CLIENT_ID`, `GMAIL_CLIENT_SECRET`, `GMAIL_REFRESH_TOKE
 
 Keep `SUPPORT_EMAIL=ecan@scu.edu` for replies. Deploy the reviewed code with `NOTIFICATION_EMAIL_PROVIDER=disabled` first. Check pending notification counts before enabling Gmail: the worker will process every eligible pending notice, not only a test message. Enable `NOTIFICATION_EMAIL_PROVIDER=gmail` after sender validation and backlog review. The app uses Google's HTTPS API because Render Free blocks ordinary SMTP ports. No Gmail password or app password goes into BroncosHub.
 
+The Blueprint leaves the provider setting under dashboard control (`sync: false`) so a later sync does not reset an approved Gmail configuration. For a new service, explicitly choose `disabled` until setup is complete. Render documents this behavior in its [Blueprint reference](https://render.com/docs/blueprint-spec#prompting-for-secret-values).
+
 An authorization can be revoked or expire after account/security changes. A `gmail_auth_required` failure means the owner needs to reconnect the sender; it is not a reason to retry the password or widen the permission scope.
 
 ## Verify delivery
@@ -41,6 +43,7 @@ Only the dedicated sender account authorizes Gmail access. Students continue to 
 - Personal Gmail generally allows 500 outgoing messages per day. Quota or abuse controls can temporarily block sending. A cancellation notice to 100 attendees uses 100 emails in addition to their registration confirmations.
 - Gmail does not support a documented send idempotency key. Unknown outcomes are held for review instead of automatically resending and risking duplicate messages. A fixed Message-ID is a search/correlation aid, not a duplicate-prevention guarantee.
 - `sent` means Google's API accepted the request. It does not prove inbox delivery. The app cannot inspect the mailbox with its send-only permission.
+- The first real test reached Spam. A recipient can mark a trusted message **Not spam** or add the sender to contacts; this does not establish reliable delivery to other students. Do not promise inbox placement. The exact filtering reason was not verified. [Google's guidance](https://support.google.com/mail/answer/1366858?hl=en)
 - Explicit rejection can retry with bounded delays, up to eight attempts and 23 hours from notice creation. Expired/unknown messages need attention; the app does not promise to eventually deliver every message after a quota block.
 - The notification worker sleeps with the Render Free website. Gmail does not fix that hosting delay. Use this setup for a small pilot with the website's My events page as the current source of registration and event status.
 

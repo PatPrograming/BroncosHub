@@ -45,4 +45,6 @@ services:
       - key: RATE_LIMIT_ENABLED
         value: 'true'
       - key: NOTIFICATION_EMAIL_PROVIDER
-        value: disabled
+        # Keep the dashboard's reviewed sender setting across Blueprint syncs.
+        # Use disabled on a new service until sender verification is complete.
+        sync: false
