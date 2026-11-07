@@ -1,0 +1,30 @@
+{% extends 'base.html' %}
+{% from 'components/ui.html' import icon %}
+{% block title %}Support{% endblock %}
+{% block content %}
+<section class="container page-section">
+  <div class="page-heading"><h1 class="page-title">Need a hand?</h1></div>
+  <div class="detail-grid">
+    <div class="stack">
+      <section class="card stack-sm">
+        <h2 class="section-title">Questions about an event</h2>
+        <p>Open the event and choose <strong>Contact organizer</strong>. You’ll need to sign in with your SCU account to see their email.</p>
+        <p>Ask the organizer about entry requirements or refund eligibility before buying a ticket. If you already bought one, include the event name and ticket reference in your message.</p>
+      </section>
+      <section class="card stack-sm">
+        <h2 class="section-title">Cancellations and refunds</h2>
+        <p>You can cancel a free registration from <a class="link" href="/my-registrations">My events</a>. For a paid ticket, ask the organizer about a refund; they handle payments through Stripe.</p>
+        <p>If an organizer cancels an event or an admin removes it, registrations close and completed Stripe payments are queued for refunds. A refund is complete only when its status says <strong>Refunded</strong>. Check your registration for updates.</p>
+        <p>A pending refund may need the organizer’s attention. Contact BroncosHub support if you cannot reach them or the event was removed.</p>
+      </section>
+    </div>
+    <aside class="card stack">
+      <h2 class="section-title">Contact BroncosHub</h2>
+      <p>For account issues, website problems, or help reaching an organizer:</p>
+      <a class="link" href="{{ support_mailto }}">{{ support_email }} {{ icon('mail') }}</a>
+      <p class="small muted">Include the page or event and what happened. Don’t send passwords or card details.</p>
+      <a class="link" href="{{ url_for('support.privacy') }}">Privacy and account information {{ icon('arrow-right') }}</a>
+    </aside>
+  </div>
+</section>
+{% endblock %}

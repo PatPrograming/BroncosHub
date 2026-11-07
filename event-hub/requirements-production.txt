@@ -3,3 +3,5 @@
 gunicorn==26.2.0
 # PostgreSQL driver for the hosted database; local SQLite remains supported.
 psycopg[binary]==3.3.8
+# Optional operational alerts; disabled until a private SENTRY_DSN is configured.
+sentry-sdk==2.74.0

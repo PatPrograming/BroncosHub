@@ -24,6 +24,9 @@ from app.services.moderation_service import resolve_report
 from config import TestConfig
 import test_concurrency as concurrency
 import test_event_flow as flows
+import test_notifications as notices
+import test_registration_notifications as registration_notices
+import test_gmail_notifications as gmail_notices
 
 
 @pytest.fixture
@@ -125,6 +128,55 @@ def test_postgres_http_event_flows(pg_app, scenario):
     scenario(pg_app, (clients, ids))
 
 
+@pytest.mark.parametrize("scenario", [
+    notices.test_success_sends_committed_payload_without_db_transaction_and_clears_content,
+    notices.test_timeout_retry_reuses_exact_envelope_and_key_despite_title_or_sender_changes,
+    notices.test_crashed_worker_releases_on_lease_expiry_with_same_key_and_payload,
+    notices.test_event_edit_notice_commits_with_change_and_rolls_back_with_failed_cover_save,
+], ids=lambda scenario: scenario.__name__.removeprefix("test_"))
+def test_postgres_notification_transactions_and_recovery(pg_app, scenario, monkeypatch):
+    notices.configure(pg_app)
+    scenario(pg_app, notices.seed(pg_app), monkeypatch)
+
+
+@pytest.mark.parametrize("attempted", [False, True])
+def test_postgres_cancellation_then_removal_delivers_one_safe_notice(pg_app, monkeypatch, attempted):
+    notices.configure(pg_app)
+    notices.test_cancel_then_moderation_sends_one_safe_replacement_only_to_affected_attendee(
+        pg_app, notices.seed(pg_app), monkeypatch, attempted,
+    )
+
+
+@pytest.mark.parametrize("scenario", [
+    registration_notices.test_free_http_registration_queues_one_confirmation_for_repeated_submissions,
+    registration_notices.test_cancel_then_reregister_sends_only_latest_registration_state,
+    registration_notices.test_registration_and_notice_rollback_together_when_queue_fails,
+    registration_notices.test_inflight_cancellation_retry_cannot_revive_after_reregistration,
+], ids=lambda scenario: scenario.__name__.removeprefix("test_"))
+def test_postgres_registration_email_transitions(pg_app, scenario, monkeypatch):
+    def no_provider(*args, **kwargs):
+        pytest.fail("PostgreSQL notification checks cannot contact email providers")
+    monkeypatch.setattr("requests.sessions.Session.request", no_provider)
+    scenario(pg_app, registration_notices.seed_signup(pg_app), monkeypatch)
+
+
+@pytest.mark.parametrize("scenario", [
+    gmail_notices.test_explicit_rejection_retries_safely_with_same_trace_id_after_cooldown,
+    gmail_notices.test_crashed_unattempted_claim_can_be_recovered,
+], ids=lambda scenario: scenario.__name__.removeprefix("test_"))
+def test_postgres_gmail_safe_recovery(pg_app, scenario, monkeypatch):
+    gmail_notices.configure(pg_app)
+    scenario(pg_app, notices.seed(pg_app), monkeypatch)
+
+
+@pytest.mark.parametrize("new_provider", ["gmail", "resend", "disabled"])
+def test_postgres_gmail_uncertain_send_never_replayed(pg_app, monkeypatch, new_provider):
+    gmail_notices.configure(pg_app)
+    gmail_notices.test_crashed_started_send_is_not_retried_after_lease_expiry(
+        pg_app, notices.seed(pg_app), monkeypatch, new_provider,
+    )
+
+
 def test_postgres_app_restart_preserves_records_times_and_privacy(pg_app, pg_config):
     event_id, report_id = concurrency.seed(pg_app)
     with pg_app.app_context():
@@ -146,7 +198,7 @@ def test_postgres_app_restart_preserves_records_times_and_privacy(pg_app, pg_con
                 "JOIN pg_namespace n ON n.oid = c.relnamespace "
                 "WHERE n.nspname = :schema AND c.relkind = 'r'"
             ), {"schema": pg_config.DATABASE_SCHEMA}).all()
-            assert len(tables) == 8
+            assert len(tables) == len(db.metadata.tables)
             assert all(enabled for _, enabled in tables)
             assert db.session.scalar(text("SELECT current_schema()")) == pg_config.DATABASE_SCHEMA
         assert restarted.test_client().get("/healthz").json == {"status": "ok"}
@@ -218,7 +270,7 @@ def test_simultaneous_postgres_startup_creates_one_complete_schema(pg_config):
                 assert db.session.scalar(text(
                     "SELECT count(*) FROM information_schema.tables "
                     "WHERE table_schema = :schema"
-                ), {"schema": pg_config.DATABASE_SCHEMA}) == 8
+                ), {"schema": pg_config.DATABASE_SCHEMA}) == len(db.metadata.tables)
     finally:
         for app in apps:
             with app.app_context():

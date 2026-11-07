@@ -125,6 +125,8 @@ def complete_purchase(registration, card_number, service=None):
             if registration.ticket is None:
                 db.session.add(Ticket(registration=registration,
                                       code=f"BH-{secrets.token_hex(4).upper()}", is_valid=True))
+            from app.services.notification_service import queue_registration_notice
+            queue_registration_notice(registration, "registered")
         elif result["status"] == "declined":
             registration.status = "failed"
         else:

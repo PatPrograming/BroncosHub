@@ -47,6 +47,9 @@ def register_student(student, event):
             db.session.add(existing)
         else:
             existing.status = status
+        if status == "confirmed":
+            from app.services.notification_service import queue_registration_notice
+            queue_registration_notice(existing, "registered")
         db.session.commit()
         return existing
 
@@ -64,5 +67,7 @@ def cancel_free_registration(student, registration):
         if registration.status != "confirmed":
             raise CancellationNotAllowed("Only confirmed registrations can be cancelled.")
         registration.status = "cancelled"
+        from app.services.notification_service import queue_registration_notice
+        queue_registration_notice(registration, "unregistered")
         db.session.commit()
         return registration

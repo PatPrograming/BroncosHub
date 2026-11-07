@@ -17,6 +17,8 @@ def create_app(config_class=Config):
 
     db.init_app(app)
     login_manager.init_app(app)
+    from app.rate_limits import register_rate_limits
+    register_rate_limits(app)
     oauth.init_app(app)
     oauth.register(
         name="google",
@@ -28,6 +30,11 @@ def create_app(config_class=Config):
     )
 
     from app import models  # noqa: F401
+    from app.models.notification import Notification  # noqa: F401
+    from app.services.notification_service import configure_notifications
+    configure_notifications(app)
+    from app.observability import configure_observability
+    configure_observability(app)
     from app.routes.auth import auth_bp
     from app.routes.events import events_bp
     from app.services.home_service import home_context
@@ -38,6 +45,7 @@ def create_app(config_class=Config):
     from app.routes.media import media_bp
     from app.routes.payments import payments_bp
     from app.routes.billing import billing_bp
+    from app.routes.support import support_bp
     from app.services.cover_service import ensure_event_schema
 
     app.register_blueprint(auth_bp)
@@ -49,6 +57,7 @@ def create_app(config_class=Config):
     app.register_blueprint(media_bp)
     app.register_blueprint(payments_bp)
     app.register_blueprint(billing_bp)
+    app.register_blueprint(support_bp)
     from app.commands import register_commands
     register_commands(app)
 

@@ -40,3 +40,9 @@ services:
         value: 'false'
       - key: ALLOWED_EMAIL_DOMAIN
         value: scu.edu
+      - key: SUPPORT_EMAIL
+        value: ecan@scu.edu
+      - key: RATE_LIMIT_ENABLED
+        value: 'true'
+      - key: NOTIFICATION_EMAIL_PROVIDER
+        value: disabled

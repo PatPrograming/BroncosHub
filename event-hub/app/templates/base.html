@@ -46,7 +46,7 @@
   {% with messages = get_flashed_messages(with_categories=true) %}{% if messages %}<div class="container flash-messages" aria-live="polite">{% for category,message in messages %}<div class="alert alert-{{ category }}">{{ icon('info') }}<span>{{ message }}</span></div>{% endfor %}</div>{% endif %}{% endwith %}
   {% block content %}{% endblock %}
 </main>
-<footer class="site-footer"><div class="container footer-inner"><a class="brand footer-brand" href="/">BroncosHub<span class="brand-dot">.</span></a></div></footer>
+<footer class="site-footer"><div class="container footer-inner"><a class="brand footer-brand" href="/">BroncosHub<span class="brand-dot">.</span></a>{% if support_available|default(false) %}<nav class="inline" aria-label="Help and privacy"><a class="link small" href="{{ url_for('support.support') }}">Support</a><a class="link small" href="{{ url_for('support.privacy') }}">Privacy</a></nav>{% endif %}</div></footer>
 <dialog id="confirm-dialog" class="confirm-dialog" aria-labelledby="confirm-title" aria-describedby="confirm-message">
   <button type="button" class="icon-button dialog-close" data-dialog-close aria-label="Close confirmation">{{ icon('x') }}</button>
   <span class="dialog-symbol">{{ icon('alert') }}</span><h2 id="confirm-title" class="section-title">Are you sure?</h2><p id="confirm-message" class="muted"></p>

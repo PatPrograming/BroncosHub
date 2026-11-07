@@ -1,0 +1,30 @@
+{% extends 'base.html' %}
+{% block title %}Privacy{% endblock %}
+{% block content %}
+<section class="container page-section">
+  <div class="page-heading"><h1 class="page-title">Privacy</h1></div>
+  <div class="stack">
+    <section class="card stack-sm">
+      <h2 class="section-title">What we save</h2>
+      <p>BroncosHub saves your Google account identifier, SCU email, name, account role, and optional year level. It also saves events and images you post, registrations, ticket and payment records, reports you submit, event notification delivery records, and temporary abuse-prevention counters.</p>
+      <p>We use this information to run your account, manage events and registrations, track payments, and review reported events. Session cookies keep you signed in and help protect forms.</p>
+    </section>
+    <section class="card stack-sm">
+      <h2 class="section-title">Who can see it</h2>
+      <p>Published event details, images, and organizer names can be viewed without signing in. Signed-in SCU users can open an event’s contact page to see the organizer’s SCU email.</p>
+      <p>Your profile and registration pages belong to your account. Organizers see statistics for their own events, including registration counts and year-level summaries. Admins can review event reports and moderation history.</p>
+    </section>
+    <section class="card stack-sm">
+      <h2 class="section-title">Services we use</h2>
+      <p>Google verifies your identity when you sign in. Render hosts the website, and Supabase stores the app’s database and uploaded images. When email delivery is enabled, the configured email service receives your email address and the event update being sent.</p>
+      <p>For Gmail delivery, BroncosHub sends registration confirmations, cancellation notices, and event updates from its dedicated account, broncoshubscu@gmail.com. We store that account’s send-only authorization privately on the server. The app does not request access to read your Gmail inbox, and students do not need to grant email access to receive these messages.</p>
+      <p>When paid checkout is enabled, Stripe processes payments for organizers. BroncosHub keeps payment references and status information, but does not store your full card number or security code.</p>
+    </section>
+    <section class="card stack-sm">
+      <h2 class="section-title">Questions or deletion requests</h2>
+      <p>You can update your name and optional year level from your profile. For questions about your information or to request account deletion, email <a class="link" href="{{ support_mailto }}">{{ support_email }}</a> from your account’s SCU address.</p>
+      <p>These requests are reviewed manually. We’ll clarify what can be removed and whether any payment or moderation records need to remain.</p>
+    </section>
+  </div>
+</section>
+{% endblock %}

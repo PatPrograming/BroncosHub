@@ -99,12 +99,16 @@ def configure_runtime(app):
 
     @app.errorhandler(500)
     def internal_error(error):
+        from app.observability import report_failure
+        report_failure(app, "http_500")
         db.session.rollback()
         title, message = ERROR_PAGES[500]
         return render_template("errors/error.html", status=500, title=title, message=message), 500
 
     @app.errorhandler(OperationalError)
     def database_error(error):
+        from app.observability import report_failure
+        report_failure(app, "database_failure")
         db.session.rollback()
         # Retryable lock contention has a distinct response. Other DB failures
         # remain server errors; log the exception, never expose it to visitors.
@@ -122,6 +126,8 @@ def configure_runtime(app):
         try:
             db.session.execute(text("SELECT 1"))
         except Exception:
+            from app.observability import report_failure
+            report_failure(app, "database_failure")
             db.session.rollback()
             app.logger.exception("Database health check failed")
             return jsonify(status="unavailable"), 503

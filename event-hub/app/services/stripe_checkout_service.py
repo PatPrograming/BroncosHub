@@ -285,6 +285,8 @@ def process_session(session, account_id, *, verified_snapshot=False):
             else:
                 registration.ticket.is_valid = True
             attempt.status = "completed"
+            from app.services.notification_service import queue_registration_notice
+            queue_registration_notice(registration, "registered")
         else:
             attempt.status = "refunded" if already_refunded else "refund_pending"
             refund = not already_refunded

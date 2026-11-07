@@ -210,8 +210,12 @@ def edit_event(event_id):
                         "organizer/event_form.html", event=event.event_view(), categories=CATEGORIES,
                         form_values=request.form, errors=errors, **_page_context(),
                     ), 422
+                from app.services.notification_service import event_notice_details, queue_event_notices
+                previous_notice = event_notice_details(event)
                 for field, value in data.items():
                     setattr(event, field, value)
+                if event_notice_details(event) != previous_notice:
+                    queue_event_notices(event, "changed")
                 try:
                     commit_event_with_cover(event, remove=remove, stored_cover=prepared_cover)
                     cover_saved = True
@@ -247,6 +251,8 @@ def cancel_event(event_id):
             Event.id == event.id, Event.status == "published"
         ).values(status="cancelled"))
         if changed.rowcount:
+            from app.services.notification_service import queue_event_notices
+            queue_event_notices(event, "cancelled")
             from app.services.stripe_checkout_service import queue_event_cancellations
             queue_event_cancellations(event_id)
             db.session.execute(update(Registration).where(

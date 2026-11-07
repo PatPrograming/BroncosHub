@@ -1,0 +1,2 @@
+# Local one-time sender setup only; not required by the deployed web app.
+google-auth-oauthlib==1.5.0

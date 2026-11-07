@@ -1,0 +1,21 @@
+{% extends 'base.html' %}
+{% from 'components/ui.html' import icon %}
+{% block title %}Contact organizer{% endblock %}
+{% block content %}
+<section class="container page-section">
+  <a class="breadcrumb" href="/events/{{ event.id }}">{{ icon('arrow-left') }} Back to event</a>
+  <div class="page-heading"><h1 class="page-title">Contact organizer</h1></div>
+  <div class="card stack">
+    <div class="stack-sm"><h2 class="section-title">{{ event.title }}</h2><p>Hosted by {{ event.organizer.name }}</p></div>
+    {% if organizer_email %}
+    <p>For event questions or refund requests, email the organizer:</p>
+    <p><a class="link" href="{{ organizer_mailto }}">{{ organizer_email }} {{ icon('mail') }}</a></p>
+    <p>Include the event name and, if you have one, your ticket reference. Ask about refund eligibility before buying.</p>
+    {% else %}
+    <p>The organizer’s contact information is unavailable. Email BroncosHub support for help.</p>
+    {% endif %}
+    <div class="divider"></div>
+    <p class="small muted">Need help with the website or can’t reach the organizer? <a class="link" href="{{ support_mailto }}">{{ support_email }}</a></p>
+  </div>
+</section>
+{% endblock %}

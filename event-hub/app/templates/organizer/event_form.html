@@ -49,6 +49,7 @@
           <div class="field"><label for="capacity">Event capacity <span aria-hidden="true">*</span></label><input id="capacity" name="capacity" type="number" min="1" max="10000" step="1" required value="{{ values.get('capacity', event.capacity if editing else '50') }}" aria-describedby="capacity-help{% if field_errors.get('capacity') %} capacity-error{% endif %}"{% if field_errors.get('capacity') %} aria-invalid="true"{% endif %}><p id="capacity-help" class="small muted">The maximum number of registrations.</p>{% if field_errors.get('capacity') %}<p class="small" id="capacity-error">{{ field_errors.capacity }}</p>{% endif %}</div>
         </div>
         <p class="editor-save-state" data-form-state data-clean-label="{{ 'No unsaved changes' if editing else 'Not published yet' }}" role="status" aria-live="polite">Changes are saved when you {{ 'save this form' if editing else 'publish' }}.</p>
+        {% if support_available|default(false) %}<p class="small muted">Signed-in SCU students can contact you at your SCU email about this event.</p>{% endif %}
         <div class="form-actions"><a class="button button-secondary" href="/organizer/">Go back</a><button class="button button-primary" type="submit">{{ 'Save changes' if editing else 'Publish event' }} {{ icon('arrow-right') }}</button></div>
       </form>
       {% if editing and event.status == 'published' %}

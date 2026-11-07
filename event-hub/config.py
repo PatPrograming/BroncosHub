@@ -66,6 +66,16 @@ class Config:
     ALLOWED_EMAIL_DOMAIN = os.environ.get("ALLOWED_EMAIL_DOMAIN", "scu.edu")
     GOOGLE_CLIENT_ID = os.environ.get("GOOGLE_CLIENT_ID", "")
     GOOGLE_CLIENT_SECRET = os.environ.get("GOOGLE_CLIENT_SECRET", "")
+    SUPPORT_EMAIL = os.environ.get("SUPPORT_EMAIL", "ecan@scu.edu")
+    RATE_LIMIT_ENABLED = os.environ.get("RATE_LIMIT_ENABLED", "true").lower() == "true"
+    NOTIFICATION_EMAIL_PROVIDER = os.environ.get("NOTIFICATION_EMAIL_PROVIDER", "disabled")
+    NOTIFICATION_FROM_EMAIL = os.environ.get("NOTIFICATION_FROM_EMAIL", "")
+    RESEND_API_KEY = os.environ.get("RESEND_API_KEY", "")
+    # Separate sender authorization; these never replace student Google login.
+    GMAIL_CLIENT_ID = os.environ.get("GMAIL_CLIENT_ID", "")
+    GMAIL_CLIENT_SECRET = os.environ.get("GMAIL_CLIENT_SECRET", "")
+    GMAIL_REFRESH_TOKEN = os.environ.get("GMAIL_REFRESH_TOKEN", "")
+    SENTRY_DSN = os.environ.get("SENTRY_DSN", "")
     SESSION_COOKIE_HTTPONLY = True
     SESSION_COOKIE_SAMESITE = "Lax"
     SESSION_COOKIE_SECURE = APP_ENV == "production"
@@ -107,6 +117,14 @@ class TestConfig(Config):
     SUPABASE_URL = ""
     SUPABASE_SECRET_KEY = ""
     TESTING = True
+    RATE_LIMIT_ENABLED = False
+    NOTIFICATION_EMAIL_PROVIDER = "disabled"
+    NOTIFICATION_FROM_EMAIL = ""
+    RESEND_API_KEY = ""
+    GMAIL_CLIENT_ID = ""
+    GMAIL_CLIENT_SECRET = ""
+    GMAIL_REFRESH_TOKEN = ""
+    SENTRY_DSN = ""
     SESSION_COOKIE_SECURE = False
     REMEMBER_COOKIE_SECURE = False
     TRUSTED_HOSTS = None

@@ -38,6 +38,8 @@ def resolve_report(report, reviewer, action, note):
             return False
 
         if action == "remove":
+            from app.services.notification_service import queue_event_notices
+            queue_event_notices(event, "removed")
             from app.services.stripe_checkout_service import queue_event_cancellations
             queue_event_cancellations(event_id)
             db.session.execute(update(Event).where(Event.id == event_id).values(status="removed"))

@@ -2,6 +2,8 @@
 
 The real Flask app is deployed at **https://broncoshub.onrender.com**. The initial Render deployment and database health check succeeded on November 6, 2026. Google sign-in and Stripe sandbox/live payments remain unconfigured and unverified.
 
+The support, request-limit, notification, alerting and hosted-backup additions described below are the latest **local changes**, not a verified deployment. No automatic backup schedule or live email/alert delivery has been configured or verified.
+
 ## Free Render website with Supabase storage
 
 The repository's `render.yaml` uses one **Render Free** web service. Records live in **Supabase PostgreSQL**, and event covers live in a **private Supabase Storage bucket**. Render's local filesystem is temporary; the hosted app must not use it for records or uploads. The blueprint requires external storage and refuses to start with local SQLite or local covers.
@@ -24,7 +26,7 @@ The blueprint also sets `APP_ENV=production`, a generated session secret, and `T
 
 For a custom domain, explicitly set `TRUSTED_HOSTS` to the real hostname (or comma-separated hostnames) and `PUBLIC_BASE_URL` to its complete HTTPS origin, without a path or trailing slash. Explicit settings take precedence over Render's defaults. Do not replace them with a wildcard.
 
-Keep one web instance for this setup. The start script initializes the database, runs Gunicorn with one worker/four threads, and starts payment recovery. If either child exits, both stop so Render can restart them together. Database records and images remain outside the web process and survive its restarts and redeployments.
+Keep one web instance for this setup. The start script initializes the database, runs Gunicorn with one worker/four threads, and starts the payment/notification worker. If either child exits, both stop so Render can restart them together. Database records and images remain outside the web process and survive its restarts and redeployments.
 
 Production requires `APP_ENV=production`. Do not deploy the Flask debug server or either preview runner. `run.py` is for local development on port 5080; debug mode is off unless explicitly enabled. Preview shortcuts and fictional accounts never belong on the public site.
 
@@ -34,7 +36,7 @@ As checked November 6, 2026, Render Free sleeps after 15 minutes without inbound
 
 Supabase Free includes a 500 MB database, 1 GB file storage and 5 GB egress. A project can pause after a week of inactivity, and free projects do not include automatic database backups. Stay within those limits and keep separate backups. Persistent external storage protects against a Render restart; it is not a backup or an always-on availability guarantee.
 
-Keep `PAYMENT_PROVIDER=disabled` for the initial deployment. The payment recovery process sleeps along with the free web service, so this configuration does not provide continuous payment recovery. Review hosting availability and complete the Stripe checks below before enabling real sales.
+Keep `PAYMENT_PROVIDER=disabled` for the initial deployment. The payment and notification worker sleeps along with the free web service, so this configuration does not provide continuous payment recovery or prompt email delivery. Review hosting availability and complete the Stripe checks below before enabling real sales.
 
 ## Google and account roles
 
@@ -42,13 +44,57 @@ A team member must finish Google OAuth configuration before students can sign in
 
 Every verified SCU account can host events and manage only its own listings and statistics. New accounts remain students; no organizer-role assignment is needed. Paid events additionally require completed Stripe setup.
 
-Admin moderation is separate. After a moderator signs in, a trusted operator can grant admin access from a local checkout connected to the hosted database. Render Free has no interactive shell. Install `requirements-production.txt` and load the production environment settings privately before running this command; otherwise the command could target the local database. Outside Render, set `TRUSTED_HOSTS` and `PUBLIC_BASE_URL` explicitly to the live site, and set `PYTHON_DOTENV_DISABLED=1` to avoid loading local development settings:
+Admin moderation is separate. **ecan@scu.edu** is the chosen initial admin, but access is pending that account's verified Google sign-in and an explicit role assignment. There is no automatic email-based promotion. After the account exists, a trusted operator can grant admin access from a local checkout connected to the hosted database. Render Free has no interactive shell. Install `requirements-production.txt` and load the production environment settings privately before running this command; otherwise the command could target the local database. Outside Render, set `TRUSTED_HOSTS` and `PUBLIC_BASE_URL` explicitly to the live site, and set `PYTHON_DOTENV_DISABLED=1` to avoid loading local development settings:
 
 ```sh
-flask --app wsgi:app user-role moderator@scu.edu --role admin
+flask --app wsgi:app user-role ecan@scu.edu --role admin
 ```
 
 The command displays the change and asks for confirmation. Use `--role student` to revoke admin access without removing the ability to host events. Existing organizer accounts retain hosting access. This command cannot create an account or bypass Google login.
+
+## Support, request limits and event email
+
+`SUPPORT_EMAIL=ecan@scu.edu` supplies the support contact and email reply address. The new `/support` and `/privacy` pages explain contact, refunds and saved information. An event's **Contact organizer** page requires a linked SCU account; it does not expose organizer emails to signed-out visitors. Removed-event receipts direct students to site support. Voluntary paid-ticket refund terms remain an organizer decision; the app does not promise automatic approval.
+
+Keep `RATE_LIMIT_ENABLED=true` in production. Costly actions use shared SQLite/PostgreSQL counters, so changing browser sessions or web workers does not reset account limits. Limits cover event creation/edits/uploads, registrations, checkout, reports, profile changes and payment setup. Login starts use bounded hashed-address buckets. Ordinary browsing, health checks, Google callbacks and Stripe webhooks are exempt. Excess attempts receive HTTP 429 with `Retry-After`; current defaults are in `app/rate_limits.py`.
+
+Free registrations, verified successful ticket payments, student cancellations, event time/location edits, organizer cancellations and moderation removals queue notices in the same transaction as the change. Pending or failed payments do not send confirmation. The worker sends committed notices separately and skips obsolete messages after cancellation, re-registration or another edit. An email already accepted by a provider cannot be recalled.
+
+Email delivery defaults to **disabled**. The chosen free setup uses a dedicated Gmail sender; the account and its authorization must be completed before enabling it. This is separate from Patrick's student Google login and does not change its callback or permissions. See [Gmail sender setup](gmail-email.md).
+
+For Gmail, set these in Render's private environment settings after authorization:
+
+| Variable | Setting |
+| --- | --- |
+| `NOTIFICATION_EMAIL_PROVIDER` | `gmail` |
+| `NOTIFICATION_FROM_EMAIL` | The dedicated, authorized `@gmail.com` address |
+| `GMAIL_CLIENT_ID` | Sender Desktop OAuth client ID |
+| `GMAIL_CLIENT_SECRET` | Sender OAuth client secret |
+| `GMAIL_REFRESH_TOKEN` | Sender's send-only authorization |
+| `SUPPORT_EMAIL` | `ecan@scu.edu` (reply address) |
+| `PUBLIC_BASE_URL` | Trusted public HTTPS origin |
+
+Gmail does not provide Resend-style idempotency. A timeout, ambiguous send response or recovered in-flight send is recorded as `delivery_unknown` for operator review instead of blindly sending again. A deterministic Message-ID helps the operator find a message but does not guarantee deduplication. Explicitly rejected requests can retry with bounded backoff. Do not reset unknown deliveries or switch providers to replay them; first check the sender's Sent folder and the recipient with their cooperation. The app has no permission to read the mailbox.
+
+Retries stop after eight attempts or a 23-hour notice lifetime; terminal records discard message content and are removed after 30 days. Daily quota delays or a sleeping Render service can therefore cause a notice to expire. A disabled provider still expires/prunes old records without sending them. A `sent` record means the provider accepted the request, not proof that the message reached the recipient's inbox.
+
+Resend remains an alternative when the team owns and verifies a sending domain. It uses the same stored payload and idempotency key on retries, with a lifetime shorter than Resend's 24-hour idempotency window:
+
+| Variable | Setting |
+| --- | --- |
+| `NOTIFICATION_EMAIL_PROVIDER` | `resend` |
+| `NOTIFICATION_FROM_EMAIL` | Verified sender address, without a display name |
+| `RESEND_API_KEY` | Resend sending API key |
+| `SUPPORT_EMAIL` | `ecan@scu.edu` |
+| `PUBLIC_BASE_URL` | Trusted public HTTPS origin |
+
+The SCU support inbox is a reply address, not authorization to send on behalf of `scu.edu`. Gmail's personal-account daily limit is generally 500 messages; Resend Free is 100 per day and 3,000 per month. These are limits, not guaranteed capacity or inbox delivery. Test registration, student cancellation, rescheduling, organizer cancellation and removal using controlled accounts, including replies reaching support. Automated tests replace the provider; they do not establish real delivery.
+
+## Optional alerts
+
+`SENTRY_DSN` is empty by default. A configured Sentry project can receive fixed failure categories for server/database errors, payment recovery, failed event notifications and refunds needing attention. The integration rebuilds events from an allowlist: no student email, event text, request body, URL, cookies, stack trace or provider response is included. It does not enable automatic request, exception, tracing or session capture. Reports are limited per category/process; queuing an alert does not prove delivery.
+
+Configure Sentry's notification rules and the alert recipient separately, then test a controlled failure. No live Sentry delivery or dashboard rule has been verified. `/healthz` remains a database health check; this optional integration is not an external uptime monitor.
 
 ## Stripe: organizers receive their own payments
 
@@ -107,17 +153,9 @@ For the hosted app, the PostgreSQL database and private Storage bucket are the s
 
 ### Hosted PostgreSQL and Storage backups
 
-Supabase Free does not include automatic database backups. Before a significant update, stop app writes and payment recovery, export the `broncoshub` schema with PostgreSQL's `pg_dump`, and download the files from the private `event-covers` bucket. A database dump alone does **not** contain the image files.
+Follow [Hosted backups and restore checks](hosted-backups.md) for `tools/hosted_backup.py`. It packages the private app schema and every referenced cover, verifies the archive, and checks a restore in a separate local database. A database dump alone does **not** contain images. Stop writes and both workers as described in that procedure; the tool's `--app-stopped` flag does not stop them for you.
 
-An operator can configure a private PostgreSQL connection service named `broncoshub` using the session-pooler settings above, TLS verification, and a password file readable only by that operator. With that connection configured, a database export is:
-
-```sh
-pg_dump --dbname=service=broncoshub --schema=broncoshub --format=custom --file=/private/backup/location/broncoshub.dump
-```
-
-Use a PostgreSQL client compatible with the server version. Keep the dump and an inventory/copy of the bucket's files together in a private location outside Render and Supabase. Do not place either in Git or send student data to the group chat. Restore into a separate database and private bucket, then check account/event counts, registrations, and referenced images before changing the application's connection settings. A backup is not verified until the restore has been checked.
-
-`tools/data_backup.py` supports **local SQLite and local cover files only**. It does not back up hosted PostgreSQL or the Supabase bucket.
+This is operator-run tooling. A private off-site destination, recurring schedule, retention policy, failure alerts and a verified restore drill still need setup. Keep archives out of Git and group messages. `tools/data_backup.py` remains for local SQLite/local images only.
 
 ### Local SQLite backups
 
@@ -141,6 +179,8 @@ Verify the restored database and images before switching the stopped local app t
 
 Run `python -m pytest -q tests tools` before deployment. Provider tests use local fake transport/provider implementations; they do not create Stripe accounts or charges.
 
+The prepared `.github/workflows/tests.yml` runs SQLite and PostgreSQL tests on `main` pushes, pull requests and manual dispatch. It has not yet run on GitHub; verify its remote result after pushing. It neither deploys the app nor configures backups, email or alerts.
+
 On the hosted sandbox, verify Google sign-in, organizer onboarding, successful checkout and receipt, duplicate checkout, two buyers competing for the last seat, event cancellation/removal and completed refunds, delayed-webhook recovery, and a saved cover surviving restart. Compare the final states in BroncosHub and Stripe. Local passing tests do not establish deployment or live-payment success.
 
 Give teammates the repository link and this document. Share access through the team's Render/Stripe/Google permissions, not by sending secret keys, `.env`, database exports, or payment details in chat.
@@ -148,3 +188,5 @@ Give teammates the repository link and this document. Share access through the t
 Primary references checked November 4, 2026: [Stripe integration design](https://docs.stripe.com/connect/design-an-integration), [Accounts v2 configuration](https://docs.stripe.com/connect/accounts-v2/connected-account-configuration), [onboarding links](https://docs.stripe.com/api/v2/core/account-links/create), [direct charges](https://docs.stripe.com/connect/direct-charges), [webhooks](https://docs.stripe.com/webhooks), and [refund behavior](https://docs.stripe.com/refunds). Hosting commands/defaults come from this repository's `render.yaml`, `tools/start_production.py`, `tools/payment_worker.py`, and `gunicorn.conf.py`; review the actual hosting setup before applying them.
 
 Hosting references checked November 6, 2026: [Render Free limits](https://render.com/docs/free), [Blueprint fields](https://render.com/docs/blueprint-spec), [default environment variables](https://render.com/docs/environment-variables), [Supabase pricing and free limits](https://supabase.com/pricing), [PostgreSQL connections](https://supabase.com/docs/guides/database/connecting-to-postgres), and [private Storage buckets](https://supabase.com/docs/guides/storage/buckets/fundamentals).
+
+Email references checked November 6, 2026: [Resend idempotency keys](https://resend.com/docs/dashboard/emails/idempotency-keys) and [send-email API](https://resend.com/docs/api-reference/emails/send-email). Configuration, retention and alerting descriptions above were checked against the current local source; they do not establish hosted configuration or delivery.
