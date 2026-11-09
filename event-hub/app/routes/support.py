@@ -1,9 +1,10 @@
 """Support information and organizer contact, without publishing account emails."""
 
 import re
+from pathlib import Path
 from urllib.parse import quote
 
-from flask import Blueprint, abort, current_app, render_template
+from flask import Blueprint, Response, abort, current_app, render_template
 from flask_login import current_user, login_required
 from sqlalchemy.orm import joinedload
 
@@ -13,6 +14,8 @@ from app.models import Event
 
 support_bp = Blueprint("support", __name__)
 DEFAULT_SUPPORT_EMAIL = "ecan@scu.edu"
+# HTML-file ownership proof for Google Search Console / Auth Platform branding.
+GOOGLE_SITE_VERIFICATION_FILE = "google70205f6885e476e3.html"
 
 
 def _email(value):
@@ -50,6 +53,18 @@ def privacy():
 @support_bp.get("/terms")
 def terms():
     return render_template("support/terms.html")
+
+
+@support_bp.get(f"/{GOOGLE_SITE_VERIFICATION_FILE}")
+def google_search_console_verification():
+    path = Path(current_app.static_folder) / GOOGLE_SITE_VERIFICATION_FILE
+    if not path.is_file():
+        abort(404)
+    return Response(
+        path.read_text(encoding="utf-8"),
+        mimetype="text/html; charset=utf-8",
+        headers={"Cache-Control": "public, max-age=300"},
+    )
 
 
 @support_bp.get("/events/<int:event_id>/contact")

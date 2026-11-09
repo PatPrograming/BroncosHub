@@ -71,6 +71,15 @@ def test_google_site_verification_meta_when_configured(app, client, support_case
     assert b"test-verification-token" in home.data
 
 
+def test_google_search_console_html_file_is_public(client, support_case):
+    response = client.get("/google70205f6885e476e3.html")
+    assert response.status_code == 200
+    assert response.mimetype == "text/html"
+    assert response.get_data(as_text=True).strip() == (
+        "google-site-verification: google70205f6885e476e3.html"
+    )
+
+
 def test_public_event_offers_contact_without_exposing_organizer_email(client, support_case):
     response = client.get(f"/events/{support_case['event']}")
     assert response.status_code == 200
