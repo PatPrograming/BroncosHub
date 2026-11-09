@@ -3,13 +3,15 @@
 import re
 from pathlib import Path
 from urllib.parse import quote
+from xml.sax.saxutils import escape
 
-from flask import Blueprint, Response, abort, current_app, render_template
+from flask import Blueprint, Response, abort, current_app, render_template, request, url_for
 from flask_login import current_user, login_required
 from sqlalchemy.orm import joinedload
 
 from app.extensions import db
 from app.models import Event
+from app.services.event_service import campus_now
 
 
 support_bp = Blueprint("support", __name__)
@@ -18,6 +20,15 @@ DEFAULT_SUPPORT_EMAIL = "ecan@scu.edu"
 # https://broncoshub.onrender.com/google70205f6885e476e3.html
 GOOGLE_SITE_VERIFICATION_FILE = "google70205f6885e476e3.html"
 GOOGLE_SITE_VERIFICATION_BODY = "google-site-verification: google70205f6885e476e3.html\n"
+SITEMAP_STATIC_ENDPOINTS = (
+    ("home", {}),
+    ("events.list_events", {}),
+    ("support.privacy", {}),
+    ("support.terms", {}),
+    ("support.support", {}),
+    ("auth.login", {}),
+    ("auth.signup", {}),
+)
 
 
 def _email(value):
@@ -34,6 +45,17 @@ def _email(value):
 
 def _mailto(email):
     return "mailto:" + quote(email, safe="@.")
+
+
+def _public_origin():
+    base = (current_app.config.get("PUBLIC_BASE_URL") or "").rstrip("/")
+    if base:
+        return base
+    return request.url_root.rstrip("/")
+
+
+def _absolute_url(endpoint, **values):
+    return _public_origin() + url_for(endpoint, **values)
 
 
 @support_bp.app_context_processor
@@ -55,6 +77,47 @@ def privacy():
 @support_bp.get("/terms")
 def terms():
     return render_template("support/terms.html")
+
+
+@support_bp.get("/sitemap.xml")
+def sitemap():
+    urls = [_absolute_url(endpoint, **values) for endpoint, values in SITEMAP_STATIC_ENDPOINTS]
+    event_ids = db.session.scalars(
+        db.select(Event.id)
+        .where(Event.status == "published", Event.end_time > campus_now())
+        .order_by(Event.start_time, Event.id)
+        .limit(5000)
+    ).all()
+    urls.extend(_absolute_url("events.detail", event_id=event_id) for event_id in event_ids)
+    body = [
+        '<?xml version="1.0" encoding="UTF-8"?>',
+        '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">',
+    ]
+    for loc in urls:
+        body.append(f"  <url><loc>{escape(loc)}</loc></url>")
+    body.append("</urlset>\n")
+    return Response(
+        "\n".join(body),
+        mimetype="application/xml",
+        headers={"Cache-Control": "public, max-age=300"},
+    )
+
+
+@support_bp.get("/robots.txt")
+def robots_txt():
+    sitemap_url = _public_origin() + url_for("support.sitemap")
+    body = (
+        "User-agent: *\n"
+        "Allow: /\n"
+        "Disallow: /admin/\n"
+        "Disallow: /organizer/\n"
+        "Disallow: /my-registrations\n"
+        "Disallow: /profile\n"
+        "Disallow: /auth/\n"
+        "Disallow: /billing/\n"
+        f"Sitemap: {sitemap_url}\n"
+    )
+    return Response(body, mimetype="text/plain; charset=utf-8")
 
 
 @support_bp.get(f"/{GOOGLE_SITE_VERIFICATION_FILE}")

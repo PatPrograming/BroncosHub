@@ -80,6 +80,22 @@ def test_google_search_console_html_file_is_public(client, support_case):
     )
 
 
+def test_sitemap_lists_public_pages_and_published_events(client, support_case, app):
+    app.config["PUBLIC_BASE_URL"] = "https://broncoshub.onrender.com"
+    response = client.get("/sitemap.xml")
+    assert response.status_code == 200
+    assert response.mimetype == "application/xml"
+    body = response.get_data(as_text=True)
+    for path in ("/", "/events", "/privacy", "/terms", "/support", "/login", "/signup"):
+        assert f"https://broncoshub.onrender.com{path}" in body
+    assert f"https://broncoshub.onrender.com/events/{support_case['event']}" in body
+    assert "/admin/" not in body
+    assert "/organizer/" not in body
+    robots = client.get("/robots.txt")
+    assert robots.status_code == 200
+    assert "Sitemap: https://broncoshub.onrender.com/sitemap.xml" in robots.get_data(as_text=True)
+
+
 def test_public_event_offers_contact_without_exposing_organizer_email(client, support_case):
     response = client.get(f"/events/{support_case['event']}")
     assert response.status_code == 200
