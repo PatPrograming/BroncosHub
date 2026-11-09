@@ -14,8 +14,10 @@ from app.models import Event
 
 support_bp = Blueprint("support", __name__)
 DEFAULT_SUPPORT_EMAIL = "ecan@scu.edu"
-# HTML-file ownership proof for Google Search Console / Auth Platform branding.
+# Search Console HTML-file method requires this exact path on the site root:
+# https://broncoshub.onrender.com/google70205f6885e476e3.html
 GOOGLE_SITE_VERIFICATION_FILE = "google70205f6885e476e3.html"
+GOOGLE_SITE_VERIFICATION_BODY = "google-site-verification: google70205f6885e476e3.html\n"
 
 
 def _email(value):
@@ -57,11 +59,14 @@ def terms():
 
 @support_bp.get(f"/{GOOGLE_SITE_VERIFICATION_FILE}")
 def google_search_console_verification():
-    path = Path(current_app.static_folder) / GOOGLE_SITE_VERIFICATION_FILE
-    if not path.is_file():
+    # Serve at the domain root (not /static/...). Prefer the package file, fall
+    # back to the known token so ownership checks never 404 after deploy.
+    path = Path(__file__).resolve().parent.parent / GOOGLE_SITE_VERIFICATION_FILE
+    body = path.read_text(encoding="utf-8") if path.is_file() else GOOGLE_SITE_VERIFICATION_BODY
+    if "google-site-verification:" not in body:
         abort(404)
     return Response(
-        path.read_text(encoding="utf-8"),
+        body if body.endswith("\n") else body + "\n",
         mimetype="text/html; charset=utf-8",
         headers={"Cache-Control": "public, max-age=300"},
     )
