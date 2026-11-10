@@ -1,9 +1,11 @@
 /* Home is a daily overview; event search and the full calendar live in Explore. */
 .home-dashboard { padding-block:48px 72px; }
-.home-about { padding:28px 32px; margin-bottom:36px; display:grid; gap:14px; }
+.home-about { padding:28px 32px; margin-bottom:36px; display:grid; grid-template-columns:minmax(0,1.2fr) minmax(0,1fr); gap:32px; align-items:stretch; }
+.home-about-copy { display:grid; gap:14px; min-width:0; }
+.home-campus-image { display:block; width:100%; height:100%; min-height:300px; object-fit:cover; border-radius:14px; }
 .home-product-name { font-family:var(--serif); font-size:1.5rem; font-weight:650; letter-spacing:-.02em; color:var(--red); }
 .home-about .page-title { font-size:clamp(1.85rem, 3vw, 2.4rem); max-width:22ch; }
-.home-about>p.muted { max-width:62ch; font-size:1.0625rem; line-height:1.6; }
+.home-about-copy>p.muted { max-width:62ch; font-size:1.0625rem; line-height:1.6; }
 .home-about-actions { display:flex; flex-wrap:wrap; gap:14px; align-items:center; }
 .home-legal-links { margin-top:2px; }
 .home-heading { display:flex; align-items:center; justify-content:space-between; gap:24px; margin-bottom:36px; }
@@ -63,7 +65,8 @@
 }
 @media(max-width:760px) {
   .home-dashboard { padding-block:30px 48px; }
-  .home-about { padding:22px 20px; margin-bottom:26px; }
+  .home-about { padding:22px 20px; margin-bottom:26px; grid-template-columns:1fr; gap:24px; }
+  .home-campus-image { height:auto; min-height:0; }
   .home-heading { align-items:flex-start; flex-direction:column; gap:20px; margin-bottom:26px; }
   .home-heading-actions { flex-direction:row-reverse; justify-content:flex-end; }
   .home-overview { grid-template-columns:1fr; gap:24px; }

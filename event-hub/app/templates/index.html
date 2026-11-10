@@ -5,6 +5,7 @@
 {% block content %}
 <section class="container home-dashboard">
   <section class="home-about surface" aria-labelledby="broncoshub-about-title">
+    <div class="home-about-copy">
     <p class="home-product-name">BroncosHub</p>
     <h1 id="broncoshub-about-title" class="page-title">Campus events for Santa Clara University students</h1>
     <p class="muted">BroncosHub is a campus events app for the SCU community. Anyone can browse upcoming events without signing in. Students use a verified <code>@scu.edu</code> Google account to register, save tickets, and host their own listings.</p>
@@ -15,6 +16,8 @@
     {% if support_available|default(false) %}
     <p class="home-legal-links small muted">Read our <a class="link" href="{{ url_for('support.privacy') }}">privacy policy</a> and <a class="link" href="{{ url_for('support.terms') }}">terms of service</a>.</p>
     {% endif %}
+    </div>
+    <img class="home-campus-image" src="{{ url_for('static', filename='images/scu-campus.png') }}" alt="Mission Santa Clara and the palm-lined walkway on SCU's campus" width="759" height="545">
   </section>
 
   <header class="home-heading">
