@@ -63,6 +63,22 @@ def event_form(client, event_id=None, **changes):
     return action, fields
 
 
+def browser_multipart(fields):
+    """Keep the cover among text fields, as the browser's event form does."""
+    boundary = "----WebKitFormBoundaryBroncosHubCoverTest"
+    parts = []
+    for name, value in fields.items():
+        header = f'--{boundary}\r\nContent-Disposition: form-data; name="{name}"'
+        if isinstance(value, tuple):
+            content, filename = value
+            header += f'; filename="{filename}"\r\nContent-Type: image/png'
+        else:
+            content = value.encode()
+        parts.append((header + "\r\n\r\n").encode() + content + b"\r\n")
+    body = b"".join(parts) + f"--{boundary}--\r\n".encode()
+    return body, f"multipart/form-data; boundary={boundary}"
+
+
 def create_cover(app, client):
     action, fields = event_form(client, cover_image=(image_file(), "poster.png"))
     assert client.post(action, data=fields).status_code == 302
@@ -94,6 +110,52 @@ def test_create_decodes_and_normalizes_cover_and_displays_it(cover_app, fmt, ext
     assert response.headers["Cache-Control"] == "private, no-store"
     assert response.headers["X-Content-Type-Options"] == "nosniff"
     assert response.data == saved.read_bytes()
+
+
+@pytest.mark.parametrize("editing", [False, True], ids=["create", "replace"])
+def test_browser_upload_accepts_campus_photo_larger_than_parser_chunk(cover_app, editing):
+    client = signed_in(cover_app)
+    event_id, previous = create_cover(cover_app, client) if editing else (None, None)
+    action, fields = event_form(client, event_id)
+    photo = (Path(__file__).resolve().parents[1] / "app/static/images/scu-campus.png").read_bytes()
+    assert 64 * 1024 < len(photo) < 5 * 1024 * 1024
+    # Chrome sends controls in document order, including text fields after the
+    # image. A real photo spans parser chunks; tiny solid-color images do not.
+    fields = {
+        **{name: fields[name] for name in ("csrf_token", "title", "description", "category")},
+        "cover_image": (photo, "scu-campus.png"),
+        "cover_token": "",
+        **{name: fields[name] for name in ("location", "start_time", "end_time", "price", "capacity")},
+    }
+    body, content_type = browser_multipart(fields)
+    assert client.post(action, data=body, content_type=content_type).status_code == 302
+    with cover_app.app_context():
+        assert db.session.scalar(db.select(db.func.count()).select_from(Event)) == 1
+        event = db.session.scalar(db.select(Event))
+        event_id, filename, url = event.id, event.cover_image_path, event.event_view()["cover_url"]
+    directory = Path(cover_app.config["COVER_UPLOAD_DIR"])
+    with Image.open(directory / filename) as saved:
+        assert saved.format == "WEBP" and saved.size == (759, 545)
+    if previous:
+        assert filename != previous and not (directory / previous).exists()
+    public = cover_app.test_client()
+    assert url.encode() in public.get(f"/events/{event_id}").data
+    assert public.get(url).status_code == 200
+
+
+@pytest.mark.parametrize("oversized", ["text", "parts"])
+def test_multipart_text_and_part_limits_still_reject_oversized_forms(cover_app, oversized):
+    client = signed_in(cover_app)
+    action, fields = event_form(client)
+    if oversized == "text":
+        fields["description"] = "x" * (300 * 1024)
+    else:
+        fields.update({f"extra_{index}": "x" for index in range(50)})
+    body, content_type = browser_multipart(fields)
+    assert client.post(action, data=body, content_type=content_type).status_code == 413
+    with cover_app.app_context():
+        assert db.session.scalar(db.select(db.func.count()).select_from(Event)) == 0
+    assert not list(Path(cover_app.config["COVER_UPLOAD_DIR"]).glob("*"))
 
 
 @pytest.mark.parametrize("kind", ["svg", "corrupt", "spoof", "path", "too_large", "pixels"])

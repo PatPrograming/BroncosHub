@@ -108,7 +108,9 @@ class Config:
     COVER_MAX_PIXELS = 20_000_000
     # Leave space for multipart form fields around the 5 MB image.
     MAX_CONTENT_LENGTH = 6 * 1024 * 1024
-    MAX_FORM_MEMORY_SIZE = 64 * 1024
+    # Multipart parsing needs room for a 64 KiB chunk plus buffered boundaries.
+    # Keep text fields bounded without rejecting valid streamed image uploads.
+    MAX_FORM_MEMORY_SIZE = 256 * 1024
     MAX_FORM_PARTS = 40
 
 
