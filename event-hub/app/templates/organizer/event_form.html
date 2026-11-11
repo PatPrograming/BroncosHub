@@ -57,7 +57,7 @@
         {% if csrf_token is defined %}<input type="hidden" name="csrf_token" value="{{ csrf_token() if csrf_token is callable else csrf_token }}">{% endif %}
         <h2 class="section-title">Cancel event</h2><p class="small muted">This closes registration and cancels existing tickets.</p>
         {% if event.price_cents > 0 %}<p class="small">{% if preview_mode or payment_provider|default('mock') == 'mock' %}Mock payments do not involve real charges or refunds.{% else %}Completed Stripe payments are queued for full refunds. Refunds may take time to finish.{% endif %}</p>{% endif %}
-        <div><button type="button" class="button button-ghost button-small" data-confirm-form="cancel-event-{{ event.id }}" data-confirm-title="Cancel this event?" data-confirm-message="This event will be marked cancelled and will no longer accept registrations.{% if not preview_mode and payment_provider|default('mock') != 'mock' %} Completed Stripe payments will be queued for full refunds.{% endif %}">{{ icon('x') }} Cancel event</button></div>
+        <div><button type="button" class="button button-ghost button-small" data-confirm-form="cancel-event-{{ event.id }}" data-confirm-title="Cancel this event?" data-confirm-message="This event will be marked cancelled and will no longer accept registrations.{% if event.price_cents > 0 and not preview_mode and payment_provider|default('mock') != 'mock' %} Completed Stripe payments will be queued for full refunds.{% endif %}">{{ icon('x') }} Cancel event</button></div>
       </form>
       {% endif %}
     </div>

@@ -14,7 +14,12 @@
   const coverError = editor.querySelector('#cover_image-error');
   const coverName = editor.querySelector('[data-cover-name]');
   const savedCoverName = coverName?.textContent || 'Current event cover';
-  let storedCover = cover?.dataset.currentCover || '';
+  const submitButton = form.querySelector('button[type="submit"]');
+  const submitLabel = submitButton?.innerHTML;
+  const workingLabel = form.action.endsWith('/edit') ? 'Saving…' : 'Publishing…';
+  let submitting = false;
+  const originalCover = cover?.dataset.currentCover || '';
+  let storedCover = originalCover;
   let objectUrl = '';
   let coverRequest = 0;
   const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
@@ -30,6 +35,16 @@
   const originalValues = Array.from(form.elements)
     .filter((field) => field.name && field.type !== 'hidden')
     .map((field) => [field.name, field.value]);
+
+  function warnBeforeLeaving(event) {
+    event.preventDefault();
+    event.returnValue = '';
+  }
+
+  function updateLeaveWarning(dirty) {
+    if (dirty && !submitting) window.addEventListener('beforeunload', warnBeforeLeaving);
+    else window.removeEventListener('beforeunload', warnBeforeLeaving);
+  }
 
   function setPreview(name, text) {
     const output = editor.querySelector(`[data-preview-field="${name}"]`);
@@ -62,10 +77,11 @@
       : price === 0 ? 'Free'
       : new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(price));
 
-    const dirty = form.dataset.dirtyOnLoad === 'true' || removeValue?.value === '1' || originalValues.some(([name, value]) => form.elements.namedItem(name)?.value !== value);
-    const stateText = dirty ? 'Unsaved changes' : state?.dataset.cleanLabel || 'Not published yet';
+    const dirty = form.dataset.dirtyOnLoad === 'true' || (Boolean(originalCover) && removeValue?.value === '1') || originalValues.some(([name, value]) => form.elements.namedItem(name)?.value !== value);
+    const stateText = submitting ? workingLabel : dirty ? 'Unsaved changes' : state?.dataset.cleanLabel || 'Not published yet';
     if (state && state.textContent !== stateText) state.textContent = stateText;
     if (state) state.dataset.dirty = String(dirty);
+    updateLeaveWarning(dirty);
   }
 
   function refreshArtwork(animate = false) {
@@ -219,6 +235,28 @@
   form.addEventListener('change', (event) => {
     refreshPreview();
     if (event.target.name === 'category') refreshArtwork(true);
+  });
+  form.addEventListener('submit', (event) => {
+    if (event.defaultPrevented) return;
+    if (submitting) { event.preventDefault(); return; }
+    if (!form.checkValidity()) { event.preventDefault(); form.reportValidity(); return; }
+    submitting = true;
+    form.setAttribute('aria-busy', 'true');
+    if (submitButton) {
+      submitButton.disabled = true;
+      submitButton.textContent = workingLabel;
+    }
+    refreshPreview();
+  });
+  window.addEventListener('pageshow', () => {
+    // Back/Forward may restore this page with its submit button still disabled.
+    submitting = false;
+    form.removeAttribute('aria-busy');
+    if (submitButton) {
+      submitButton.disabled = false;
+      submitButton.innerHTML = submitLabel;
+    }
+    refreshPreview();
   });
   card?.addEventListener('animationend', () => card.classList.remove('is-category-changing'));
   reducedMotion.addEventListener('change', () => card?.classList.remove('is-category-changing'));

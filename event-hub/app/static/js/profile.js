@@ -8,15 +8,25 @@
   const discard = form.querySelector('[data-profile-discard]');
   const status = form.querySelector('[data-profile-save-state]');
   const saved = {name: form.dataset.savedName, year: form.dataset.savedYear};
+  const saveLabel = save.innerHTML;
+  let submitting = false;
   let hasErrors = form.dataset.hasErrors === 'true';
+
+  function warnBeforeLeaving(event) {
+    event.preventDefault();
+    event.returnValue = '';
+  }
 
   function refresh() {
     const dirty = name.value.trim() !== saved.name || year.value !== saved.year;
-    save.disabled = !dirty && !hasErrors;
+    save.disabled = submitting || (!dirty && !hasErrors);
+    discard.disabled = submitting;
     discard.hidden = !dirty && !hasErrors;
-    const message = dirty ? 'Unsaved changes.' : hasErrors ? 'Check your details.' : 'No unsaved changes.';
+    const message = submitting ? 'Saving…' : dirty ? 'Unsaved changes.' : hasErrors ? 'Check your details.' : 'No unsaved changes.';
     if (status.textContent !== message) status.textContent = message;
     status.dataset.dirty = String(dirty);
+    if (dirty && !submitting) window.addEventListener('beforeunload', warnBeforeLeaving);
+    else window.removeEventListener('beforeunload', warnBeforeLeaving);
   }
 
   form.addEventListener('input', refresh);
@@ -35,6 +45,20 @@
     refresh();
     name.focus({preventScroll: true});
   });
-  window.addEventListener('pageshow', refresh);
+  form.addEventListener('submit', (event) => {
+    if (event.defaultPrevented) return;
+    if (submitting) { event.preventDefault(); return; }
+    if (!form.checkValidity()) { event.preventDefault(); form.reportValidity(); return; }
+    submitting = true;
+    form.setAttribute('aria-busy', 'true');
+    save.textContent = 'Saving…';
+    refresh();
+  });
+  window.addEventListener('pageshow', () => {
+    submitting = false;
+    form.removeAttribute('aria-busy');
+    save.innerHTML = saveLabel;
+    refresh();
+  });
   refresh();
 })();

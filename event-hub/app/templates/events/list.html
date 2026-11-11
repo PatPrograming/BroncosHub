@@ -2,6 +2,7 @@
 {% from 'components/ui.html' import icon, event_card, badge, empty_state %}
 {% from 'components/pagination.html' import page_navigation %}
 {% set result_count = pagination.total if pagination is defined else events|length %}
+{% set has_filters = filters.q or filters.category or filters.date or filters.location %}
 {% block title %}Explore events{% endblock %}
 {% block content %}
 <section class="container page-section">
@@ -40,7 +41,9 @@
   </details>
   <section id="campus-results" aria-labelledby="campus-results-title" data-announcement="{{ result_announcement }}" tabindex="-1">
     <div class="campus-results-heading"><div><h2 id="campus-results-title">{{ date_label|default('All upcoming', true) }}</h2><p class="muted"><strong>{{ result_count }}</strong> {{ 'event' if result_count == 1 else 'events' }}{% if filters.q %} for “{{ filters.q }}”{% endif %}</p></div>{% if filters.q or filters.category or filters.date or filters.location %}<a class="link" href="/events">Clear all filters {{ icon('x') }}</a>{% else %}<span class="muted campus-sort-label">Upcoming first</span>{% endif %}</div>
-    {% if events %}<div class="event-grid">{% for event in events %}{{ event_card(event) }}{% endfor %}</div>{% else %}<div class="empty-state surface"><span class="empty-state-icon">{{ icon('search') }}</span><h3 class="section-title">No events found</h3><p class="muted">Try a different date or clear your filters.</p><a class="button button-primary" href="{{ clear_date_url|default('/events', true) }}" data-campus-clear>Clear date filter {{ icon('arrow-right') }}</a></div>{% endif %}
+    {% if events %}<div class="event-grid">{% for event in events %}{{ event_card(event) }}{% endfor %}</div>
+    {% elif has_filters %}<div class="empty-state surface"><span class="empty-state-icon">{{ icon('search') }}</span><h3 class="section-title">No events found</h3><p class="muted">Try another search or clear your filters.</p><a class="button button-primary" href="/events">Clear all filters {{ icon('arrow-right') }}</a></div>
+    {% else %}<div class="empty-state surface"><span class="empty-state-icon">{{ icon('calendar') }}</span><h3 class="section-title">No upcoming events</h3><p class="muted">Check back soon, or host an event of your own.</p><a class="button button-primary" href="/organizer/events/new">Create an event {{ icon('plus') }}</a></div>{% endif %}
     {{ page_navigation(pagination|default(none), 'Event results pages') }}
   </section>
 </section>
